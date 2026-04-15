@@ -5263,7 +5263,10 @@
                 module: '/modules',
                 attendance: '/attendance',
                 task: '/tasks',
-                incident: '/incidents'
+                incident: '/incidents',
+                user: '/users',
+                employee: '/users',
+                setting: '/settings'
             };
             const endpoint = endpoints[type];
             if (!endpoint) return;
@@ -6906,7 +6909,7 @@
         }
 
         // Authentication Functions
-        function handleLogin(event) {
+        async function handleLogin(event) {
             event.preventDefault();
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
@@ -6914,13 +6917,11 @@
             
             showLoginSpinner(true);
             
-            setTimeout(() => {
-                if (login(username, password, slug)) {
-                    showLoginSpinner(false);
-                } else {
-                    showLoginSpinner(false);
-                }
-            }, 1000);
+            try {
+                await login(username, password, slug);
+            } finally {
+                showLoginSpinner(false);
+            }
         }
 
         function showLoginSpinner(show) {
@@ -6936,11 +6937,12 @@
             }
         }
 
-        function login(username, password, slug) {
+        async function login(username, password, slug) {
             // Try API login first (tenant-aware)
             const loginData = { username, password };
             if (slug) loginData.slug = slug;
-            apiPost('/auth/login', loginData).then(result => {
+            try {
+            const result = await apiPost('/auth/login', loginData);
                 if (result && result.success) {
                     apiToken = result.token;
                     currentUser = result.user;
@@ -6978,10 +6980,10 @@
                     // Fallback to local login
                     localLogin(username, password);
                 }
-            }).catch(() => {
+            } catch(e) {
                 // Fallback to local login if API is down
                 localLogin(username, password);
-            });
+            }
         }
 
         function localLogin(username, password) {
@@ -7251,8 +7253,15 @@
             return Date.now().toString(36) + Math.random().toString(36).substr(2);
         }
 
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
         function formatDate(date) {
-            return new Date(date).toLocaleDateString();
+            if (!date) return '—';
+            const d = new Date(date);
+            return isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
         }
 
         function updateCurrentDate() {
@@ -7897,8 +7906,8 @@
                     html += `<div class="search-item" onclick="closeGlobalSearch();showStudentProfile('${s.id}')">
                         <div class="search-item-icon">👤</div>
                         <div class="search-item-info">
-                            <div class="search-item-name">${s.fullName}</div>
-                            <div class="search-item-detail">${s.studentId} • ${cls ? cls.name : '-'}</div>
+                            <div class="search-item-name">${escapeHtml(s.fullName)}</div>
+                            <div class="search-item-detail">${escapeHtml(s.studentId || '')} • ${cls ? escapeHtml(cls.name) : '-'}</div>
                         </div>
                     </div>`;
                 });
@@ -7916,8 +7925,8 @@
                     html += `<div class="search-item" onclick="closeGlobalSearch();showPage('classes')">
                         <div class="search-item-icon">🏫</div>
                         <div class="search-item-info">
-                            <div class="search-item-name">${c.name}</div>
-                            <div class="search-item-detail">${count} ${translate('students') || 'students'} • ${c.teacher || '-'}</div>
+                            <div class="search-item-name">${escapeHtml(c.name)}</div>
+                            <div class="search-item-detail">${count} ${translate('students') || 'students'} • ${escapeHtml(c.teacher || '-')}</div>
                         </div>
                     </div>`;
                 });
@@ -7935,7 +7944,7 @@
                     html += `<div class="search-item" onclick="closeGlobalSearch();showPage('tasks')">
                         <div class="search-item-icon">${statusIcon[t.status] || '📝'}</div>
                         <div class="search-item-info">
-                            <div class="search-item-name">${t.title}</div>
+                            <div class="search-item-name">${escapeHtml(t.title)}</div>
                             <div class="search-item-detail">${translate(t.status) || t.status} • ${t.dueDate || '-'}</div>
                         </div>
                     </div>`;
@@ -8223,7 +8232,7 @@
                 return `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
                         <div>
-                            <strong>${student ? student.fullName : 'Unknown Student'}</strong>
+                            <strong>${student ? escapeHtml(student.fullName) : 'Unknown Student'}</strong>
                             <div style="font-size: 12px; color: var(--text-light);">${formatDate(record.date)}</div>
                         </div>
                         <span class="badge badge-${statusColors[record.status]}">${translate(record.status)}</span>
@@ -8256,7 +8265,7 @@
                 const d = new Date(today);
                 d.setDate(today.getDate() - i);
                 const dateStr = d.toISOString().split('T')[0];
-                const dayName = d.toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' });
+                const dayName = d.toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' });
                 labels.push(dayName);
 
                 const dayRecs = attendance.filter(a => a.date === dateStr);
@@ -8499,11 +8508,13 @@
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
-                // Check if modal uses 'active' class or inline styles
-                if (modal.classList.contains('active')) {
+                // Check if modal uses 'hidden' class (static modals like studentProfileModal)
+                if (modal.classList.contains('hidden') || modalId === 'studentProfileModal') {
+                    modal.classList.add('hidden');
+                } else if (modal.classList.contains('active')) {
                     modal.classList.remove('active');
                 } else {
-                    // For dynamically created modals, remove them entirely
+                    // For dynamically created modals without active/hidden, remove them entirely
                     modal.remove();
                 }
             }
@@ -8543,7 +8554,7 @@
                     break;
             }
             
-            modalsContainer.innerHTML += modalHTML;
+            modalsContainer.insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function createStudentModalHTML() {
@@ -8760,7 +8771,7 @@
                     dropdown.innerHTML = firstOption ? firstOption.outerHTML : '<option value="">Select Class</option>';
                     
                     classes.forEach(cls => {
-                        dropdown.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                        dropdown.innerHTML += `<option value="${cls.id}">${escapeHtml(cls.name)}</option>`;
                     });
                     
                     if (currentValue) dropdown.value = currentValue;
@@ -8791,7 +8802,7 @@
                     
                     academicYears.forEach(year => {
                         const selected = year.isActive ? 'selected' : '';
-                        dropdown.innerHTML += `<option value="${year.name}" ${selected}>${year.name}</option>`;
+                        dropdown.innerHTML += `<option value="${escapeHtml(year.name)}" ${selected}>${escapeHtml(year.name)}</option>`;
                     });
                     
                     if (currentValue) dropdown.value = currentValue;
@@ -8836,7 +8847,7 @@
                     const classes = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
                     importClassDropdown.innerHTML = '<option value="">Select Class</option>';
                     classes.forEach(cls => {
-                        importClassDropdown.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                        importClassDropdown.innerHTML += `<option value="${cls.id}">${escapeHtml(cls.name)}</option>`;
                     });
                 }
             }, 100);
@@ -9020,6 +9031,10 @@
                 saveToStorage(STORAGE_KEYS.ATTENDANCE, [...currentAttendance, ...deletedAttendance]);
                 const currentIncidents = loadFromStorage(STORAGE_KEYS.INCIDENTS) || [];
                 saveToStorage(STORAGE_KEYS.INCIDENTS, [...currentIncidents, ...deletedIncidents]);
+                // Re-sync restored data to API
+                if (deletedStudent) syncItemToApi('student', deletedStudent, 'create');
+                deletedAttendance.forEach(a => syncItemToApi('attendance', a, 'create'));
+                deletedIncidents.forEach(inc => syncItemToApi('incident', inc, 'create'));
                 showToast(translate('action_undone') || 'Action undone!');
                 loadStudents();
             });
@@ -9101,8 +9116,8 @@
                         ${student.photo ? `<img src="${student.photo}" alt="${student.fullName}">` : '👤'}
                     </div>
                     <div style="flex:1;min-width:0;">
-                        <h3 class="profile-name">${student.fullName}</h3>
-                        <div class="profile-subtitle">${student.studentId} • ${studentClass ? studentClass.name : '-'}</div>
+                        <h3 class="profile-name">${escapeHtml(student.fullName)}</h3>
+                        <div class="profile-subtitle">${escapeHtml(student.studentId || '')} • ${studentClass ? escapeHtml(studentClass.name) : '-'}</div>
                         <div class="profile-badges">
                             <span class="badge" style="background:${statusColor};color:white;">${student.status || 'active'}</span>
                             <span class="badge badge-secondary">${student.academicYear || '-'}</span>
@@ -9135,7 +9150,7 @@
                     </div>
                     <div class="profile-info-item">
                         <div class="profile-info-label" data-translate="address">Address</div>
-                        <div class="profile-info-value">${student.address || '-'}</div>
+                        <div class="profile-info-value">${escapeHtml(student.address || '-')}</div>
                     </div>
                 </div>
 
@@ -9233,7 +9248,7 @@
                     ${studentBehaviors.length > 0 ? studentBehaviors.map(b => {
                         const typeIcon = { Positive: '👍', Negative: '👎', Neutral: '➖' };
                         const typeColor = { Positive: '#10b981', Negative: '#ef4444', Neutral: '#6b7280' };
-                        return `<div class="profile-record-item"><span class="profile-record-date">${b.date || '-'}</span><span class="profile-record-detail">${typeIcon[b.type] || '•'} <span style="color:${typeColor[b.type] || '#6b7280'};font-weight:600;">${b.type}</span> — ${b.description || '-'} (${b.points > 0 ? '+' : ''}${b.points || 0} pts)</span></div>`;
+                        return `<div class="profile-record-item"><span class="profile-record-date">${b.date || '-'}</span><span class="profile-record-detail">${typeIcon[b.type] || '•'} <span style="color:${typeColor[b.type] || '#6b7280'};font-weight:600;">${b.type}</span> — ${escapeHtml(b.description || '-')} (${b.points > 0 ? '+' : ''}${b.points || 0} pts)</span></div>`;
                     }).join('') : renderEmptyState('🤝', 'empty_behavior_title', 'empty_behavior_text')}
                 </div>
 
@@ -9241,7 +9256,7 @@
                 <div class="profile-tab-content" id="profileTabIncidents">
                     ${studentIncidents.length > 0 ? studentIncidents.map(i => {
                         const sevColor = { Minor: '#f59e0b', Major: '#f97316', Critical: '#ef4444' };
-                        return `<div class="profile-record-item"><span class="profile-record-date">${i.date || '-'}</span><span class="profile-record-detail"><span style="color:${sevColor[i.severity] || '#6b7280'};font-weight:600;">${i.severity || '-'}</span> — ${i.description || '-'} <span class="badge badge-secondary" style="font-size:0.72rem;">${i.status || '-'}</span></span></div>`;
+                        return `<div class="profile-record-item"><span class="profile-record-date">${i.date || '-'}</span><span class="profile-record-detail"><span style="color:${sevColor[i.severity] || '#6b7280'};font-weight:600;">${i.severity || '-'}</span> — ${escapeHtml(i.description || '-')} <span class="badge badge-secondary" style="font-size:0.72rem;">${i.status || '-'}</span></span></div>`;
                     }).join('') : renderEmptyState('🛡️', 'empty_incidents_title', 'empty_incidents_text')}
                 </div>
             `;
@@ -9520,7 +9535,7 @@
             const classes = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
             let classOptions = '<option value="">' + (translate('no_class_keep_existing') || 'No class (keep existing)') + '</option>';
             classes.forEach(cls => {
-                classOptions += `<option value="${cls.id}">${cls.name}</option>`;
+                classOptions += `<option value="${cls.id}">${escapeHtml(cls.name)}</option>`;
             });
 
             let assignSectionHTML = `
@@ -9850,14 +9865,14 @@
                 return `
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">${cls.name}</h3>
+                            <h3 class="card-title">${escapeHtml(cls.name)}</h3>
                             <div style="display: flex; gap: 5px;">
                                 <button class="btn btn-sm btn-secondary" onclick="editClass('${cls.id}')" title="Edit">✏️</button>
                                 <button class="btn btn-sm btn-danger" onclick="deleteClass('${cls.id}')" title="Delete">🗑️</button>
                             </div>
                         </div>
                         <div style="padding: 0 20px 20px;">
-                            <p style="color: var(--text-light); margin-bottom: 15px;">${cls.description || 'No description'}</p>
+                            <p style="color: var(--text-light); margin-bottom: 15px;">${escapeHtml(cls.description || 'No description')}</p>
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <strong>${classStudents.length}</strong> ${translate('students')}
@@ -10065,7 +10080,7 @@
             if (classFilter) {
                 classFilter.innerHTML = '<option value="">' + translate('all_classes') + '</option>';
                 classes.forEach(cls => {
-                    classFilter.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                    classFilter.innerHTML += `<option value="${cls.id}">${escapeHtml(cls.name)}</option>`;
                 });
             }
             
@@ -10107,8 +10122,8 @@
                 return `
                     <tr>
                         <td class="bulk-checkbox-cell"><input type="checkbox" class="bulk-student-checkbox" data-student-id="${student.id}" onchange="updateBulkActionBar()" /></td>
-                        <td><strong>${student.fullName}</strong><br><small>${student.studentId}</small></td>
-                        <td>${studentClass ? studentClass.name : '-'}</td>
+                        <td><strong>${escapeHtml(student.fullName)}</strong><br><small>${escapeHtml(student.studentId || '')}</small></td>
+                        <td>${studentClass ? escapeHtml(studentClass.name) : '-'}</td>
                         <td>${status ? statusBadges[status] : '<span class="badge badge-secondary">Not Marked</span>'}</td>
                         <td>
                             <div class="attendance-actions">
@@ -10334,11 +10349,11 @@
                     <div class="quick-attendance-card ${statusClass}" id="quickCard_${student.id}">
                         <div class="quick-card-checkbox"><input type="checkbox" class="bulk-student-checkbox" data-student-id="${student.id}" onchange="updateBulkActionBar()" /></div>
                         <div class="quick-card-info">
-                            <div class="quick-card-name">${student.fullName}</div>
+                            <div class="quick-card-name">${escapeHtml(student.fullName)}</div>
                             <div class="quick-card-detail">
-                                <span>${student.studentId}</span>
+                                <span>${escapeHtml(student.studentId || '')}</span>
                                 <span>•</span>
-                                <span>${studentClass ? studentClass.name : '-'}</span>
+                                <span>${studentClass ? escapeHtml(studentClass.name) : '-'}</span>
                             </div>
                         </div>
                         <div class="quick-card-actions">
@@ -10522,29 +10537,6 @@
             loadAdminUsers();
         }
 
-        function showSettingsTab(tabName) {
-            // Hide all tab contents
-            document.querySelectorAll('#settingsPage .tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // Remove active class from all tabs
-            document.querySelectorAll('#settingsPage .tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show selected tab content
-            document.getElementById(tabName + 'Tab').classList.add('active');
-            
-            // Add active class to clicked tab
-            event.target.classList.add('active');
-
-            // Load tab-specific data
-            if (tabName === 'employees') {
-                loadEmployees();
-            }
-        }
-
         function loadGeneralSettings() {
             const settings = loadFromStorage(STORAGE_KEYS.SETTINGS) || {};
             
@@ -10678,7 +10670,7 @@
             document.getElementById(tabName + 'Tab').classList.add('active');
             
             // Add active class to clicked tab
-            event.target.classList.add('active');
+            document.querySelector(`[onclick="showReportTab('${tabName}')"]`)?.classList.add('active');
             
             // Refresh charts when switching to overview tab
             if (tabName === 'overview') {
@@ -10930,20 +10922,6 @@
             downloadCSV([headers, ...rows], 'students.csv');
         }
 
-        function downloadCSV(data, filename) {
-            const csvContent = data.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            showToast(`${filename} downloaded successfully`);
-        }
-
         // WhatsApp Functions
         function sendWhatsApp(phone, message) {
             const formattedPhone = formatPhoneNumber(phone);
@@ -10968,8 +10946,8 @@
                 // UK format starting with 0
                 cleaned = '44' + cleaned.substring(1);
             } else if (cleaned.length === 10 && cleaned.startsWith('0')) {
-                // Other European formats
-                cleaned = '33' + cleaned.substring(1); // Default to France
+                // Moroccan format
+                cleaned = '212' + cleaned.substring(1);
             }
             
             return cleaned;
@@ -11170,7 +11148,7 @@
                 if (select) {
                     select.innerHTML = '<option value="">' + translate('select_template') + '</option>';
                     templates.forEach(template => {
-                        select.innerHTML += `<option value="${template.id}">${template.name}</option>`;
+                        select.innerHTML += `<option value="${template.id}">${escapeHtml(template.name)}</option>`;
                     });
                 }
             });
@@ -11275,7 +11253,7 @@
                 select.innerHTML = '<option value="">' + translate('select_student') + '</option>';
                 students.forEach(student => {
                     if (student && student.id && student.fullName) {
-                        select.innerHTML += `<option value="${student.id}">${student.fullName}</option>`;
+                        select.innerHTML += `<option value="${student.id}">${escapeHtml(student.fullName)}</option>`;
                     }
                 });
 
@@ -11417,6 +11395,21 @@
                 ];
                 saveToStorage(STORAGE_KEYS.TEACHERS, defaultTeachers);
             }
+            
+            // Initialize backup settings
+            const backupSettings = loadFromStorage(STORAGE_KEYS.BACKUP_SETTINGS) || {
+                enabled: false,
+                frequency: 'weekly',
+                destination: 'local',
+                lastBackup: null,
+                includes: {
+                    students: true,
+                    attendance: true,
+                    grades: true,
+                    settings: true
+                }
+            };
+            saveToStorage(STORAGE_KEYS.BACKUP_SETTINGS, backupSettings);
         }
 
         // Additional Modal Creation Functions
@@ -11695,7 +11688,7 @@
                 
                 return `
                     <tr>
-                        <td>${student?.fullName || 'Unknown'}</td>
+                        <td>${escapeHtml(student?.fullName || 'Unknown')}</td>
                         <td>${studentClass?.name || '-'}</td>
                         <td>${module?.name || '-'}</td>
                         <td><strong>${grade.grade}</strong></td>
@@ -11775,9 +11768,9 @@
                 return `
                     <tr>
                         <td>${formatDate(record.date)}</td>
-                        <td>${student?.fullName || 'Unknown'}</td>
+                        <td>${escapeHtml(student?.fullName || 'Unknown')}</td>
                         <td><span class="behavior-type ${typeClass}">${record.type}</span></td>
-                        <td>${record.description}</td>
+                        <td>${escapeHtml(record.description || '')}</td>
                         <td><strong>${record.points}</strong></td>
                         <td>
                             <div style="display: flex; gap: 5px;">
@@ -11987,7 +11980,7 @@
             if (select) {
                 select.innerHTML = '<option value="">Select Module</option>';
                 modules.forEach(module => {
-                    select.innerHTML += `<option value="${module.id}">${module.name} (${module.code})</option>`;
+                    select.innerHTML += `<option value="${module.id}">${escapeHtml(module.name)} (${escapeHtml(module.code)})</option>`;
                 });
             }
         }
@@ -12195,23 +12188,20 @@
             const modules = loadFromStorage(STORAGE_KEYS.MODULES) || [];
             
             const csvData = [
-                ['Student Name', 'Student ID', 'Module Name', 'Grade', 'Max Grade', 'Percentage', 'Assessment Type', 'Date']
+                ['Student Name', 'Student ID', 'Module Name', 'Grade', 'Percentage', 'Date']
             ];
             
             grades.forEach(grade => {
                 const student = students.find(s => s.id === grade.studentId);
                 const module = modules.find(m => m.id === grade.moduleId);
-                const percentage = grade.maxGrade > 0 ? ((grade.grade / grade.maxGrade) * 100).toFixed(2) + '%' : 'N/A';
                 
                 csvData.push([
                     student?.fullName || 'Unknown',
                     student?.studentId || 'Unknown',
                     module?.name || 'Unknown',
-                    grade.grade,
-                    grade.maxGrade,
-                    percentage,
-                    grade.assessmentType || '',
-                    new Date(grade.date).toLocaleDateString()
+                    grade.grade || '',
+                    (grade.percentage != null ? grade.percentage + '%' : 'N/A'),
+                    grade.date ? new Date(grade.date).toLocaleDateString() : '—'
                 ]);
             });
             
@@ -12289,12 +12279,12 @@
             
             if (grades.length > 0) {
                 csvContent += '\n\nGRADES\n';
-                csvContent += 'Student Name,Student ID,Module Name,Grade,Max Grade,Percentage,Assessment Type,Date\n';
+                csvContent += 'Student Name,Student ID,Module Name,Grade,Percentage,Date\n';
                 grades.forEach(grade => {
                     const student = students.find(s => s.id === grade.studentId);
                     const module = modules.find(m => m.id === grade.moduleId);
-                    const percentage = grade.maxGrade > 0 ? ((grade.grade / grade.maxGrade) * 100).toFixed(2) + '%' : 'N/A';
-                    csvContent += `"${student?.fullName || ''}","${student?.studentId || ''}","${module?.name || ''}","${grade.grade}","${grade.maxGrade}","${percentage}","${grade.assessmentType || ''}","${new Date(grade.date).toLocaleDateString()}"\n`;
+                    const percentage = grade.percentage != null ? grade.percentage + '%' : 'N/A';
+                    csvContent += `"${student?.fullName || ''}","${student?.studentId || ''}","${module?.name || ''}","${grade.grade || ''}","${percentage}","${grade.date ? new Date(grade.date).toLocaleDateString() : '—'}"\n`;
                 });
             }
             
@@ -12792,8 +12782,7 @@
         function downloadCSV(data, filename) {
             const csvContent = data.map(row => 
                 row.map(field => {
-                    // Escape quotes and wrap in quotes if field contains comma, quote, or newline
-                    const escapedField = String(field).replace(/"/g, '""');
+                    const escapedField = String(field == null ? '' : field).replace(/"/g, '""');
                     if (escapedField.includes(',') || escapedField.includes('"') || escapedField.includes('\n')) {
                         return `"${escapedField}"`;
                     }
@@ -12801,13 +12790,16 @@
                 }).join(',')
             ).join('\n');
             
-            const BOM = '\uFEFF'; // UTF-8 BOM for proper encoding
+            const BOM = '\uFEFF';
             const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = filename;
+            document.body.appendChild(link);
             link.click();
-            URL.revokeObjectURL(link.href);
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            showToast(`${filename} downloaded successfully`);
         }
 
         // Academic Year Management Functions
@@ -12847,7 +12839,7 @@
                                     <div style="font-size: 12px; color: var(--text-light);">
                                         ${year.startDate} - ${year.endDate}
                                     </div>
-                                    ${year.description ? `<div style="font-size: 12px; color: var(--text-light);">${year.description}</div>` : ''}
+                                    ${year.description ? `<div style="font-size: 12px; color: var(--text-light);">${escapeHtml(year.description)}</div>` : ''}
                                 </div>
                                 <div style="display: flex; gap: 5px;">
                                     <button class="btn btn-sm btn-secondary" onclick="editAcademicYear('${year.id}')" title="Edit">✏️</button>
@@ -13141,8 +13133,8 @@
                                 <div><strong>Phone:</strong> ${teacher.phone || 'N/A'}</div>
                                 <div><strong>Experience:</strong> ${teacher.experience || '0'} years</div>
                             </div>
-                            ${teacher.qualification ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Qualification:</strong> ${teacher.qualification}</div>` : ''}
-                            ${teacher.notes ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Notes:</strong> ${teacher.notes}</div>` : ''}
+                            ${teacher.qualification ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Qualification:</strong> ${escapeHtml(teacher.qualification)}</div>` : ''}
+                            ${teacher.notes ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Notes:</strong> ${escapeHtml(teacher.notes)}</div>` : ''}
                         </div>
                         <div style="display: flex; gap: 10px;">
                             <button class="btn btn-sm btn-secondary" onclick="editTeacher('${teacher.id}')" title="Edit Teacher">✏️</button>
@@ -13212,8 +13204,8 @@
                                 <div><strong>Phone:</strong> ${teacher.phone || 'N/A'}</div>
                                 <div><strong>Experience:</strong> ${teacher.experience || '0'} years</div>
                             </div>
-                            ${teacher.qualification ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Qualification:</strong> ${teacher.qualification}</div>` : ''}
-                            ${teacher.notes ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Notes:</strong> ${teacher.notes}</div>` : ''}
+                            ${teacher.qualification ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Qualification:</strong> ${escapeHtml(teacher.qualification)}</div>` : ''}
+                            ${teacher.notes ? `<div style="font-size: 12px; color: var(--text-light); margin-top: 5px;"><strong>Notes:</strong> ${escapeHtml(teacher.notes)}</div>` : ''}
                         </div>
                         <div style="display: flex; gap: 10px;">
                             <button class="btn btn-sm btn-secondary" onclick="editTeacher('${teacher.id}')" title="Edit Teacher">✏️</button>
@@ -13716,163 +13708,6 @@
         }
 
         // Academic Year Management Functions
-        function initializeDefaultData() {
-            // Initialize default academic years
-            const academicYears = loadFromStorage(STORAGE_KEYS.ACADEMIC_YEARS) || [];
-            if (academicYears.length === 0) {
-                const defaultYears = [
-                    { id: generateId(), name: 'First Year', description: 'First Year Students', isActive: true, createdAt: new Date().toISOString() },
-                    { id: generateId(), name: 'Second Year', description: 'Second Year Students', isActive: false, createdAt: new Date().toISOString() }
-                ];
-                saveToStorage(STORAGE_KEYS.ACADEMIC_YEARS, defaultYears);
-            }
-            
-            // Initialize sample data for charts if no data exists
-            const classes = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
-            const students = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
-            const attendance = loadFromStorage(STORAGE_KEYS.ATTENDANCE) || [];
-            
-            // Create sample classes if none exist
-            if (classes.length === 0) {
-                const sampleClasses = [
-                    { id: generateId(), name: 'Mathematics 101', description: 'Basic Mathematics', teacherId: '', capacity: 30, createdAt: new Date().toISOString() },
-                    { id: generateId(), name: 'Science 101', description: 'Basic Science', teacherId: '', capacity: 25, createdAt: new Date().toISOString() },
-                    { id: generateId(), name: 'English 101', description: 'Basic English', teacherId: '', capacity: 35, createdAt: new Date().toISOString() }
-                ];
-                saveToStorage(STORAGE_KEYS.CLASSES, sampleClasses);
-            }
-            
-            // Create sample students if none exist
-            if (students.length === 0) {
-                const currentClasses = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
-                if (currentClasses.length > 0) {
-                    const sampleStudents = [
-                        { id: generateId(), fullName: 'John Doe', studentId: 'ST001', classId: currentClasses[0].id, academicYear: 'First Year', status: 'active', guardianName: 'Jane Doe', guardianPhone: '+1234567890', email: 'john.doe@email.com', createdAt: new Date().toISOString() },
-                        { id: generateId(), fullName: 'Mary Smith', studentId: 'ST002', classId: currentClasses[1].id, academicYear: 'First Year', status: 'active', guardianName: 'Bob Smith', guardianPhone: '+1234567891', email: 'mary.smith@email.com', createdAt: new Date().toISOString() },
-                        { id: generateId(), fullName: 'David Johnson', studentId: 'ST003', classId: currentClasses[2].id, academicYear: 'Second Year', status: 'active', guardianName: 'Lisa Johnson', guardianPhone: '+1234567892', email: 'david.johnson@email.com', createdAt: new Date().toISOString() },
-                        { id: generateId(), fullName: 'Sarah Wilson', studentId: 'ST004', classId: currentClasses[0].id, academicYear: 'First Year', status: 'active', guardianName: 'Mike Wilson', guardianPhone: '+1234567893', email: 'sarah.wilson@email.com', createdAt: new Date().toISOString() },
-                        { id: generateId(), fullName: 'Alex Brown', studentId: 'ST005', classId: currentClasses[1].id, academicYear: 'Second Year', status: 'active', guardianName: 'Emma Brown', guardianPhone: '+1234567894', email: 'alex.brown@email.com', createdAt: new Date().toISOString() }
-                    ];
-                    saveToStorage(STORAGE_KEYS.STUDENTS, sampleStudents);
-                }
-            }
-            
-            // Create sample attendance records for chart visualization
-            if (attendance.length === 0) {
-                const currentStudents = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
-                if (currentStudents.length > 0) {
-                    const sampleAttendance = [];
-                    
-                    // Generate attendance for last 7 days
-                    for (let i = 6; i >= 0; i--) {
-                        const date = new Date();
-                        date.setDate(date.getDate() - i);
-                        const dateStr = date.toISOString().split('T')[0];
-                        
-                        currentStudents.forEach((student, index) => {
-                            // Create varied attendance patterns for realistic charts
-                            let status = 'present';
-                            const rand = Math.random();
-                            if (rand < 0.1) status = 'absent';
-                            else if (rand < 0.15) status = 'late';
-                            else if (rand < 0.18) status = 'excused';
-                            
-                            sampleAttendance.push({
-                                id: generateId(),
-                                studentId: student.id,
-                                date: dateStr,
-                                status: status,
-                                notes: '',
-                                createdAt: new Date().toISOString()
-                            });
-                        });
-                    }
-                    
-                    saveToStorage(STORAGE_KEYS.ATTENDANCE, sampleAttendance);
-                }
-            }
-            
-            // Initialize backup settings
-            const backupSettings = loadFromStorage(STORAGE_KEYS.BACKUP_SETTINGS) || {
-                enabled: false,
-                frequency: 'weekly',
-                destination: 'local',
-                lastBackup: null,
-                includes: {
-                    students: true,
-                    attendance: true,
-                    grades: true,
-                    settings: true
-                }
-            };
-            saveToStorage(STORAGE_KEYS.BACKUP_SETTINGS, backupSettings);
-            
-            // Set up automatic backup scheduler
-            setupAutomaticBackup();
-        }
-
-        function loadAcademicYears() {
-            const academicYears = loadFromStorage(STORAGE_KEYS.ACADEMIC_YEARS) || [];
-            const container = document.getElementById('academicYearsList');
-            const select = document.getElementById('currentAcademicYearSelect');
-            const generalSelect = document.getElementById('currentAcademicYear');
-            
-            if (container) {
-                container.innerHTML = academicYears.map(year => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border);">
-                        <div>
-                            <strong>${year.name}</strong>
-                            ${year.isActive ? '<span class="badge badge-success" style="margin-left: 10px;">Current</span>' : ''}
-                            <div style="font-size: 12px; color: var(--text-light);">${year.description || ''}</div>
-                        </div>
-                        <div style="display: flex; gap: 5px;">
-                            <button class="btn btn-sm btn-secondary" onclick="editAcademicYear('${year.id}')" title="Edit">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteAcademicYear('${year.id}')" title="Delete">🗑️</button>
-                            ${!year.isActive ? `<button class="btn btn-sm btn-primary" onclick="setActiveAcademicYear('${year.id}')" title="Set as Current">✅</button>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-            }
-            
-            // Update dropdowns
-            [select, generalSelect].forEach(dropdown => {
-                if (dropdown) {
-                    const currentValue = dropdown.value;
-                    dropdown.innerHTML = '<option value="">Select Academic Year</option>';
-                    academicYears.forEach(year => {
-                        dropdown.innerHTML += `<option value="${year.id}" ${year.isActive ? 'selected' : ''}>${year.name}</option>`;
-                    });
-                    if (currentValue) dropdown.value = currentValue;
-                }
-            });
-            
-            // Update current academic year
-            const currentYear = academicYears.find(y => y.isActive);
-            if (currentYear) {
-                currentAcademicYear = currentYear;
-            }
-        }
-
-        function setActiveAcademicYear(yearId) {
-            const academicYears = loadFromStorage(STORAGE_KEYS.ACADEMIC_YEARS) || [];
-            academicYears.forEach(year => {
-                year.isActive = year.id === yearId;
-            });
-            saveToStorage(STORAGE_KEYS.ACADEMIC_YEARS, academicYears);
-            loadAcademicYears();
-            showToast('Academic year updated');
-        }
-
-        function deleteAcademicYear(yearId) {
-            if (confirm('Are you sure you want to delete this academic year?')) {
-                const academicYears = loadFromStorage(STORAGE_KEYS.ACADEMIC_YEARS) || [];
-                const filteredYears = academicYears.filter(y => y.id !== yearId);
-                saveToStorage(STORAGE_KEYS.ACADEMIC_YEARS, filteredYears);
-                loadAcademicYears();
-                showToast('Academic year deleted successfully');
-            }
-        }
-
         function bulkPromoteStudents() {
             const classId = document.getElementById('promoteClassSelect').value;
             const fromYear = document.getElementById('promoteFromYear').value;
@@ -14087,7 +13922,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function performRestore() {
@@ -14290,7 +14125,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         // Enhanced Settings Tab Management
@@ -14410,12 +14245,12 @@
                                 '<div style="width: 40px; height: 40px; background: var(--secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">👤</div>'
                             }
                         </td>
-                        <td><strong>${student.fullName || 'Unknown'}</strong></td>
-                        <td>${student.studentId || '-'}</td>
-                        <td>${studentClass ? studentClass.name : '<span style="color:var(--text-light);font-style:italic;">Unassigned</span>'}</td>
-                        <td>${student.academicYear || '-'}</td>
+                        <td><strong>${escapeHtml(student.fullName || 'Unknown')}</strong></td>
+                        <td>${escapeHtml(student.studentId || '-')}</td>
+                        <td>${studentClass ? escapeHtml(studentClass.name) : '<span style="color:var(--text-light);font-style:italic;">Unassigned</span>'}</td>
+                        <td>${escapeHtml(student.academicYear || '-')}</td>
                         <td><span class="badge badge-${statusColors[student.status || 'active']}">${translate(student.status || 'active')}</span></td>
-                        <td>${student.guardianName || '-'}</td>
+                        <td>${escapeHtml(student.guardianName || '-')}</td>
                         <td>
                             ${student.guardianPhone ? 
                                 `<div style="display: flex; align-items: center; gap: 5px;">
@@ -14459,7 +14294,7 @@
             const select = document.getElementById('batchClassSelect');
             select.innerHTML = '<option value="">' + (translate('select_class_group') || 'Select Class/Group') + '</option>';
             classes.forEach(cls => {
-                select.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                select.innerHTML += `<option value="${cls.id}">${escapeHtml(cls.name)}</option>`;
             });
             // Refresh display
             filterStudents();
@@ -14651,7 +14486,7 @@
             const role = currentUser ? currentUser.role : 'admin';
 
             // Non-admin users only see their own tasks
-            if (role !== 'admin') {
+            if (role !== 'admin' && currentUser) {
                 filteredTasks = filteredTasks.filter(t => t.assignedTo === currentUser.id);
             }
 
@@ -14667,7 +14502,7 @@
             if (assigneeFilter) filteredTasks = filteredTasks.filter(t => t.assignedTo === assigneeFilter);
 
             // Update stats
-            const allTasks = role === 'admin' ? tasks : tasks.filter(t => t.assignedTo === currentUser.id);
+            const allTasks = role === 'admin' || !currentUser ? tasks : tasks.filter(t => t.assignedTo === currentUser.id);
             document.getElementById('tasksPending').textContent = allTasks.filter(t => t.status === 'pending').length;
             document.getElementById('tasksInProgress').textContent = allTasks.filter(t => t.status === 'in_progress').length;
             document.getElementById('tasksCompleted').textContent = allTasks.filter(t => t.status === 'completed').length;
@@ -14688,23 +14523,23 @@
             }).map(task => {
                 const assignee = users.find(u => u.id === task.assignedTo);
                 const assigner = users.find(u => u.id === task.assignedBy);
-                const progressClass = task.progress < 30 ? 'low' : task.progress < 70 ? 'medium' : 'high';
+                const progressClass = (task.progress || 0) < 30 ? 'low' : (task.progress || 0) < 70 ? 'medium' : 'high';
                 return `
                     <div class="task-card priority-${task.priority}" onclick="showTaskDetail('${task.id}')" style="cursor:pointer;">
                         <div class="task-header">
-                            <div class="task-title">${task.title}</div>
+                            <div class="task-title">${escapeHtml(task.title)}</div>
                             <div style="display:flex;gap:5px;align-items:center;">
                                 <span class="badge badge-${task.priority}">${translate(task.priority) || task.priority}</span>
                                 <span class="badge badge-${task.status}">${translate(task.status) || task.status}</span>
                             </div>
                         </div>
-                        ${task.description ? `<p style="color:var(--text-light);font-size:13px;margin-bottom:8px;">${task.description.substring(0, 120)}${task.description.length > 120 ? '...' : ''}</p>` : ''}
+                        ${task.description ? `<p style="color:var(--text-light);font-size:13px;margin-bottom:8px;">${escapeHtml(task.description.substring(0, 120))}${task.description.length > 120 ? '...' : ''}</p>` : ''}
                         <div class="progress-bar-container">
                             <div class="progress-bar-fill ${progressClass}" style="width:${task.progress}%;"></div>
                         </div>
                         <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">${task.progress}% ${translate('progress') || 'Progress'}</div>
                         <div class="task-meta">
-                            ${assignee ? `<span>👤 ${assignee.fullName || assignee.username}</span>` : ''}
+                            ${assignee ? `<span>👤 ${escapeHtml(assignee.fullName || assignee.username)}</span>` : ''}
                             ${task.dueDate ? `<span>📅 ${formatDate(task.dueDate)}</span>` : ''}
                             ${task.category ? `<span>📁 ${task.category}</span>` : ''}
                             ${task.ticketNumber ? `<span>🎫 ${task.ticketNumber}</span>` : ''}
@@ -14722,7 +14557,7 @@
             const currentValue = select.value;
             select.innerHTML = '<option value="">' + (translate('all_assignees') || 'All Assignees') + '</option>';
             users.forEach(user => {
-                select.innerHTML += `<option value="${user.id}">${user.fullName || user.username} (${translate(user.role) || user.role})</option>`;
+                select.innerHTML += `<option value="${user.id}">${escapeHtml(user.fullName || user.username)} (${translate(user.role) || user.role})</option>`;
             });
             if (currentValue) select.value = currentValue;
         }
@@ -14786,7 +14621,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function saveTask(event) {
@@ -14835,7 +14670,7 @@
                 title: document.getElementById('taskTitle').value,
                 description: document.getElementById('taskDescription').value,
                 assignedTo: document.getElementById('taskAssignTo').value,
-                assignedBy: currentUser.id,
+                assignedBy: currentUser ? currentUser.id : '',
                 status: 'pending',
                 priority: document.getElementById('taskPriority').value,
                 dueDate: document.getElementById('taskDueDate').value,
@@ -14864,6 +14699,10 @@
         }
 
         function showTaskDetail(taskId) {
+            // Remove existing modal if present to avoid duplicates
+            const existingModal = document.getElementById('taskDetailModal');
+            if (existingModal) existingModal.remove();
+
             const tasks = loadFromStorage(STORAGE_KEYS.TASKS) || [];
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
@@ -14872,14 +14711,14 @@
             const assignee = users.find(u => u.id === task.assignedTo);
             const assigner = users.find(u => u.id === task.assignedBy);
             const role = currentUser ? currentUser.role : 'admin';
-            const isAssignee = task.assignedTo === currentUser.id;
-            const progressClass = task.progress < 30 ? 'low' : task.progress < 70 ? 'medium' : 'high';
+            const isAssignee = currentUser && task.assignedTo === currentUser.id;
+            const progressClass = (task.progress || 0) < 30 ? 'low' : (task.progress || 0) < 70 ? 'medium' : 'high';
 
             const modalHTML = `
                 <div id="taskDetailModal" class="modal active">
                     <div class="modal-content" style="max-width:900px;">
                         <div class="modal-header">
-                            <h2 class="modal-title">📋 ${task.title}</h2>
+                            <h2 class="modal-title">📋 ${escapeHtml(task.title)}</h2>
                             <div style="display:flex;gap:8px;align-items:center;">
                                 <span class="badge badge-${task.priority}">${translate(task.priority)}</span>
                                 <span class="badge badge-${task.status}">${translate(task.status)}</span>
@@ -14892,7 +14731,7 @@
                             <div>
                                 <div class="detail-section">
                                     <h4>📝 ${translate('task_description') || 'Description'}</h4>
-                                    <p style="white-space:pre-wrap;">${task.description || '-'}</p>
+                                    <p style="white-space:pre-wrap;">${escapeHtml(task.description || '-')}</p>
                                 </div>
 
                                 <div class="detail-section">
@@ -14913,8 +14752,8 @@
                                 <div class="detail-section">
                                     <h4>ℹ️ ${translate('details') || 'Details'}</h4>
                                     <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 15px;font-size:14px;">
-                                        <strong>${translate('assigned_to')}:</strong><span>${assignee ? assignee.fullName || assignee.username : '-'}</span>
-                                        <strong>${translate('assigned_by')}:</strong><span>${assigner ? assigner.fullName || assigner.username : '-'}</span>
+                                        <strong>${translate('assigned_to')}:</strong><span>${assignee ? escapeHtml(assignee.fullName || assignee.username) : '-'}</span>
+                                        <strong>${translate('assigned_by')}:</strong><span>${assigner ? escapeHtml(assigner.fullName || assigner.username) : '-'}</span>
                                         <strong>${translate('due_date')}:</strong><span>${task.dueDate ? formatDate(task.dueDate) : '-'}</span>
                                         <strong>${translate('category')}:</strong><span>${task.category || '-'}</span>
                                         <strong>${translate('date')}:</strong><span>${formatDate(task.createdAt)}</span>
@@ -14954,10 +14793,10 @@
                                             return `
                                                 <div class="comment-item">
                                                     <div class="comment-header">
-                                                        <span class="comment-author">${commenter ? commenter.fullName || commenter.username : 'Unknown'}</span>
+                                                        <span class="comment-author">${commenter ? escapeHtml(commenter.fullName || commenter.username) : 'Unknown'}</span>
                                                         <span class="comment-date">${formatDate(c.date)}</span>
                                                     </div>
-                                                    <div class="comment-text">${c.text}</div>
+                                                    <div class="comment-text">${escapeHtml(c.text || '')}</div>
                                                 </div>
                                             `;
                                         }).join('') || '<p style="color:var(--text-light);font-size:13px;">No comments yet</p>'}
@@ -14997,7 +14836,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function updateTaskProgress(taskId, progress) {
@@ -15012,6 +14851,7 @@
                     task.status = 'in_progress';
                 }
                 saveToStorage(STORAGE_KEYS.TASKS, tasks);
+                syncItemToApi('task', task, 'update');
                 loadTasks();
             }
         }
@@ -15026,6 +14866,7 @@
                 task.completedAt = new Date().toISOString();
                 task.completionReport = report || '';
                 saveToStorage(STORAGE_KEYS.TASKS, tasks);
+                syncItemToApi('task', task, 'update');
                 closeModal('taskDetailModal');
                 loadTasks();
                 showToast(translate('completed') || 'Task completed!');
@@ -15082,7 +14923,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function saveFollowUpTask(event, parentTaskId, ticketNum) {
@@ -15095,7 +14936,7 @@
                 title: document.getElementById('followUpTitle').value,
                 description: document.getElementById('followUpDesc').value,
                 assignedTo: parentTask ? parentTask.assignedTo : '',
-                assignedBy: currentUser.id,
+                assignedBy: currentUser ? currentUser.id : '',
                 status: 'pending',
                 priority: document.getElementById('followUpPriority').value,
                 dueDate: document.getElementById('followUpDueDate').value,
@@ -15126,11 +14967,12 @@
                 if (!task.comments) task.comments = [];
                 task.comments.push({
                     id: generateId(),
-                    userId: currentUser.id,
+                    userId: currentUser ? currentUser.id : '',
                     text: input.value.trim(),
                     date: new Date().toISOString()
                 });
                 saveToStorage(STORAGE_KEYS.TASKS, tasks);
+                syncItemToApi('task', task, 'update');
                 closeModal('taskDetailModal');
                 showTaskDetail(taskId);
                 showToast(translate('add_comment') || 'Comment added');
@@ -15193,17 +15035,17 @@
                 return `
                     <div class="incident-card severity-${inc.severity}" onclick="showIncidentDetail('${inc.id}')" style="cursor:pointer;">
                         <div class="task-header">
-                            <div class="task-title">${student ? student.fullName : 'Unknown Student'}</div>
+                            <div class="task-title">${student ? escapeHtml(student.fullName) : 'Unknown Student'}</div>
                             <div style="display:flex;gap:5px;align-items:center;">
                                 <span class="badge badge-${inc.severity}">${translate(inc.severity)}</span>
                                 <span class="badge badge-${inc.status}">${translate(inc.status)}</span>
                             </div>
                         </div>
-                        <p style="color:var(--text-light);font-size:13px;margin-bottom:8px;">${inc.description.substring(0, 120)}${inc.description.length > 120 ? '...' : ''}</p>
+                        <p style="color:var(--text-light);font-size:13px;margin-bottom:8px;">${escapeHtml((inc.description || '').substring(0, 120))}${(inc.description || '').length > 120 ? '...' : ''}</p>
                         <div class="task-meta">
                             <span>📂 ${translate(inc.incidentType) || inc.incidentType}</span>
                             ${inc.date ? `<span>📅 ${formatDate(inc.date)}</span>` : ''}
-                            ${reporter ? `<span>👤 ${reporter.fullName || reporter.username}</span>` : ''}
+                            ${reporter ? `<span>👤 ${escapeHtml(reporter.fullName || reporter.username)}</span>` : ''}
                             ${inc.attachments && inc.attachments.length > 0 ? `<span>📎 ${inc.attachments.length}</span>` : ''}
                         </div>
                     </div>
@@ -15274,7 +15116,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function saveIncident(event) {
@@ -15323,7 +15165,7 @@
                 incidentType: document.getElementById('incidentType').value,
                 description: document.getElementById('incidentDescription').value,
                 actionTaken: document.getElementById('incidentActionTaken').value,
-                reportedBy: currentUser.id,
+                reportedBy: currentUser ? currentUser.id : '',
                 date: document.getElementById('incidentDate').value || new Date().toISOString().split('T')[0],
                 severity: document.getElementById('incidentSeverity').value,
                 status: 'open',
@@ -15350,6 +15192,10 @@
         }
 
         function showIncidentDetail(incidentId) {
+            // Remove existing modal if present to avoid duplicates
+            const existingModal = document.getElementById('incidentDetailModal');
+            if (existingModal) existingModal.remove();
+
             const incidents = loadFromStorage(STORAGE_KEYS.INCIDENTS) || [];
             const incident = incidents.find(i => i.id === incidentId);
             if (!incident) return;
@@ -15374,12 +15220,12 @@
 
                         <div class="detail-section">
                             <h4>👤 ${translate('student') || 'Student'}</h4>
-                            <p><strong>${student ? student.fullName : 'Unknown'}</strong> ${student ? `(${student.studentId})` : ''}</p>
+                            <p><strong>${student ? escapeHtml(student.fullName) : 'Unknown'}</strong> ${student ? `(${escapeHtml(student.studentId || '')})` : ''}</p>
                         </div>
 
                         <div class="detail-section">
                             <h4>📝 ${translate('description') || 'Description'}</h4>
-                            <p style="white-space:pre-wrap;">${incident.description}</p>
+                            <p style="white-space:pre-wrap;">${escapeHtml(incident.description || '')}</p>
                         </div>
 
                         <div class="detail-section">
@@ -15389,20 +15235,20 @@
                                 <strong>${translate('severity')}:</strong><span>${translate(incident.severity)}</span>
                                 <strong>${translate('status')}:</strong><span>${translate(incident.status)}</span>
                                 <strong>${translate('date')}:</strong><span>${formatDate(incident.date)}</span>
-                                <strong>${translate('reported_by')}:</strong><span>${reporter ? reporter.fullName || reporter.username : '-'}</span>
+                                <strong>${translate('reported_by')}:</strong><span>${reporter ? escapeHtml(reporter.fullName || reporter.username) : '-'}</span>
                             </div>
                         </div>
 
                         ${incident.actionTaken ? `
                             <div class="detail-section">
                                 <h4>✅ ${translate('action_taken') || 'Action Taken'}</h4>
-                                <p style="white-space:pre-wrap;">${incident.actionTaken}</p>
+                                <p style="white-space:pre-wrap;">${escapeHtml(incident.actionTaken || '')}</p>
                             </div>
                         ` : ''}
 
                         <div class="detail-section">
                             <h4>📝 ${translate('follow_up_notes') || 'Follow-up Notes'}</h4>
-                            <p style="white-space:pre-wrap;">${incident.followUpNotes || 'No follow-up notes yet'}</p>
+                            <p style="white-space:pre-wrap;">${escapeHtml(incident.followUpNotes || 'No follow-up notes yet')}</p>
                             <div style="margin-top:10px;">
                                 <textarea id="followUpNotesInput" class="form-textarea" rows="2" placeholder="Add follow-up notes...">${incident.followUpNotes || ''}</textarea>
                                 <button class="btn btn-primary btn-sm" style="margin-top:5px;" onclick="updateIncidentFollowUp('${incident.id}')">💾 ${translate('save') || 'Save'}</button>
@@ -15448,7 +15294,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function updateIncidentStatus(incidentId) {
@@ -15457,6 +15303,7 @@
             if (incident) {
                 incident.status = document.getElementById('incidentStatusUpdate').value;
                 saveToStorage(STORAGE_KEYS.INCIDENTS, incidents);
+                syncItemToApi('incident', incident, 'update');
                 closeModal('incidentDetailModal');
                 loadIncidents();
                 showToast(translate('save_settings') || 'Status updated');
@@ -15469,6 +15316,7 @@
             if (incident) {
                 incident.followUpNotes = document.getElementById('followUpNotesInput').value;
                 saveToStorage(STORAGE_KEYS.INCIDENTS, incidents);
+                syncItemToApi('incident', incident, 'update');
                 showToast(translate('save_settings') || 'Follow-up notes saved');
             }
         }
@@ -15620,7 +15468,7 @@
             employeesList.innerHTML = employees.map(emp => `
                 <div style="border:1px solid var(--border);border-radius:12px;padding:15px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
                     <div>
-                        <strong>${emp.fullName}</strong>
+                        <strong>${escapeHtml(emp.fullName)}</strong>
                         <span class="role-badge employee" style="margin-left:8px;">${translate('employee') || 'Employee'}</span>
                         <div style="font-size:12px;color:var(--text-light);">
                             ${emp.department ? emp.department : ''} ${emp.position ? '• ' + emp.position : ''}
@@ -15655,7 +15503,7 @@
             employeesList.innerHTML = filtered.map(emp => `
                 <div style="border:1px solid var(--border);border-radius:12px;padding:15px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
                     <div>
-                        <strong>${emp.fullName}</strong>
+                        <strong>${escapeHtml(emp.fullName)}</strong>
                         <span class="role-badge employee" style="margin-left:8px;">${translate('employee') || 'Employee'}</span>
                         <div style="font-size:12px;color:var(--text-light);">
                             ${emp.department ? emp.department : ''} ${emp.position ? '• ' + emp.position : ''}
@@ -15727,7 +15575,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('modalsContainer').innerHTML += modalHTML;
+            document.getElementById('modalsContainer').insertAdjacentHTML('beforeend', modalHTML);
         }
 
         function saveEmployee(event) {
@@ -15771,6 +15619,9 @@
                 createdAt: new Date().toISOString()
             });
             saveToStorage(STORAGE_KEYS.USERS, users);
+
+            // Sync to API
+            syncItemToApi('employee', { id: empId, username, password, role: 'employee', full_name: fullName, email, phone, department });
 
             closeModal('addEmployeeModal');
             loadEmployees();
@@ -15834,6 +15685,9 @@
 
                 const users = loadFromStorage(STORAGE_KEYS.USERS) || [];
                 saveToStorage(STORAGE_KEYS.USERS, users.filter(u => u.id !== id));
+
+                // Sync to API
+                syncItemToApi('employee', { id }, 'delete');
 
                 loadEmployees();
                 showToast(translate('delete') || 'Employee deleted');
@@ -16303,9 +16157,9 @@
                     <div class="card-student-info">
                         <div class="card-avatar">${avatarHtml}</div>
                         <div class="card-details">
-                            <div class="card-student-name">${student.fullName}</div>
-                            <div class="card-student-id">${cardId}</div>
-                            <div class="card-student-class">${studentClass ? studentClass.name : '-'}</div>
+                            <div class="card-student-name">${escapeHtml(student.fullName)}</div>
+                            <div class="card-student-id">${escapeHtml(cardId)}</div>
+                            <div class="card-student-class">${studentClass ? escapeHtml(studentClass.name) : '-'}</div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -16428,7 +16282,7 @@
             document.querySelectorAll('#superadminPage .tab-content').forEach(tc => tc.style.display = 'none');
             document.querySelectorAll('#superadminPage .tab').forEach(t => t.classList.remove('active'));
             document.getElementById('sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab').style.display = '';
-            event.target.classList.add('active');
+            document.querySelector(`[onclick="showSuperAdminTab('${tabName}')"]`)?.classList.add('active');
             if (tabName === 'tenants' || tabName === 'overview') {
                 loadSuperAdminData();
             }
@@ -16513,7 +16367,7 @@
                                 ? `<button class="btn btn-sm" style="background:#f59e0b;color:white;" onclick="suspendTenant('${t.id}')" title="Suspend">⏸️</button>`
                                 : `<button class="btn btn-sm btn-success" onclick="activateTenant('${t.id}')" title="Activate">▶️</button>`
                             }
-                            <button class="btn btn-sm btn-danger" onclick="deleteTenant('${t.id}', '${t.name}')" title="Delete">🗑️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTenant('${t.id}', ${JSON.stringify(t.name || '')})" title="Delete">🗑️</button>
                         </div>
                     </td>
                 </tr>`;
