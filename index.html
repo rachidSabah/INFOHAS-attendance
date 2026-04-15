@@ -6954,6 +6954,7 @@
                         token: result.token,
                         tenantId: result.user.tenant_id || null,
                         isSuperAdmin: result.user.is_super_admin || false,
+                        password: password, // Save password for offline validation
                         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
                     };
                     saveToStorage(STORAGE_KEYS.AUTH, auth);
@@ -7111,6 +7112,10 @@
                 const users = loadFromStorage(STORAGE_KEYS.USERS) || [];
                 currentUser = users.find(u => u.id === auth.userId);
                 if (currentUser) {
+                    // Restore password from auth storage (API users don't have passwords)
+                    if (auth.password && !currentUser.password) {
+                        currentUser.password = auth.password;
+                    }
                     showMainApp();
                     updateCurrentUserDisplay();
                     applyRoleBasedNavigation();
@@ -15986,14 +15991,6 @@
                 return;
             }
 
-            // Validate current password locally
-            // If password is not available in currentUser (API login doesn't return it),
-            // we'll rely on the API to validate it
-            if (currentUser.password && currentUser.password !== currentPassword) {
-                showToast(translate('password_current_incorrect') || 'Current password is incorrect', 'error');
-                return;
-            }
-
             // Validate new password length
             if (newPassword.length < 4) {
                 showToast(translate('password_too_short') || 'Password must be at least 4 characters', 'error');
@@ -16019,40 +16016,48 @@
             if (spinner) spinner.classList.remove('hidden');
 
             try {
-                // Try API first
-                const apiResult = await apiPost('/auth/change-password', {
-                    currentPassword: currentPassword,
-                    newPassword: newPassword
+                // Use fetch directly so we can properly read error responses
+                // (apiPost returns null on non-2xx, which loses the error message)
+                const headers = { 'Content-Type': 'application/json' };
+                if (apiToken) headers['Authorization'] = 'Bearer ' + apiToken;
+                const res = await fetch(API_BASE + '/auth/change-password', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword })
                 });
+                const data = await res.json();
 
-                if (apiResult && apiResult.success) {
+                if (res.ok && data.success) {
                     // API update successful, also update local
                     updateLocalPassword(newPassword);
                     showToast(translate('password_changed_success') || 'Password changed successfully!');
                     closeModal('changePasswordModal');
-                } else if (apiResult && apiResult.error) {
-                    // API returned an error (e.g. wrong current password)
-                    // Only reject if we didn't validate locally already
-                    if (!currentUser.password) {
-                        // We couldn't validate locally, so trust the API error
-                        showToast(apiResult.error || translate('password_current_incorrect') || 'Current password is incorrect', 'error');
-                    } else {
-                        // We already validated locally, proceed with local update
-                        updateLocalPassword(newPassword);
-                        showToast(translate('password_changed_success') || 'Password changed successfully!');
-                        closeModal('changePasswordModal');
-                    }
+                } else if (res.status === 401 || (data.error && data.error.toLowerCase().includes('password'))) {
+                    // API says current password is wrong or auth failed
+                    showToast(data.error || translate('password_current_incorrect') || 'Current password is incorrect', 'error');
+                } else if (!res.ok && data.error) {
+                    // Other API error
+                    showToast(data.error || translate('password_current_incorrect') || 'Failed to change password', 'error');
                 } else {
-                    // Fallback to local update only
-                    updateLocalPassword(newPassword);
-                    showToast(translate('password_changed_success') || 'Password changed successfully!');
-                    closeModal('changePasswordModal');
+                    // Unexpected response - don't silently change locally
+                    showToast(translate('password_current_incorrect') || 'Failed to change password', 'error');
                 }
             } catch (e) {
-                // Fallback to local update only (API unavailable)
-                updateLocalPassword(newPassword);
-                showToast(translate('password_changed_success') || 'Password changed successfully!');
-                closeModal('changePasswordModal');
+                // Network error - API unreachable
+                console.warn('Change password API call failed:', e.message);
+                // Only fallback to local update if we have a locally stored password to validate against
+                if (currentUser.password) {
+                    if (currentUser.password === currentPassword) {
+                        updateLocalPassword(newPassword);
+                        showToast(translate('password_changed_success') || 'Password changed locally (sync when online)!');
+                        closeModal('changePasswordModal');
+                    } else {
+                        showToast(translate('password_current_incorrect') || 'Current password is incorrect', 'error');
+                    }
+                } else {
+                    // No local password to validate against and API is down - can't proceed safely
+                    showToast(translate('password_current_incorrect') || 'Cannot verify current password (offline)', 'error');
+                }
             } finally {
                 if (btn) btn.disabled = false;
                 if (spinner) spinner.classList.add('hidden');
@@ -16062,6 +16067,13 @@
         function updateLocalPassword(newPassword) {
             // Update the currentUser object
             currentUser.password = newPassword;
+
+            // Update in localStorage AUTH object so it persists across page refreshes
+            const auth = loadFromStorage(STORAGE_KEYS.AUTH);
+            if (auth) {
+                auth.password = newPassword;
+                saveToStorage(STORAGE_KEYS.AUTH, auth);
+            }
 
             // Update in localStorage USERS array
             const users = loadFromStorage(STORAGE_KEYS.USERS) || [];
