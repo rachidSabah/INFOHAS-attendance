@@ -5109,15 +5109,18 @@
                     const parsed = JSON.parse(students);
                     for (const s of parsed) {
                         await apiPost('/students', {
-                            id: s.id, first_name: s.firstName || s.first_name || '',
-                            last_name: s.lastName || s.last_name || '',
-                            email: s.email || '', phone: s.phone || '',
-                            class: s.class || s.className || '',
+                            id: s.id, first_name: s.fullName || s.firstName || s.first_name || '',
+                            last_name: '', email: s.email || '', phone: s.guardianPhone || s.phone || '',
+                            class: s.classId || s.class || s.className || '',
                             group_name: s.group || s.group_name || '',
                             academic_year: s.academicYear || s.academic_year || '',
                             status: s.status || 'active', photo: s.photo || '',
-                            enrollment_date: s.enrollmentDate || s.enrollment_date || '',
-                            notes: s.notes || ''
+                            enrollment_date: s.createdAt || s.enrollmentDate || s.enrollment_date || '',
+                            notes: s.notes || '',
+                            guardian_name: s.guardianName || '',
+                            guardian_phone: s.guardianPhone || s.phone || '',
+                            student_id: s.studentId || '',
+                            address: s.address || ''
                         });
                     }
                 }
@@ -5211,6 +5214,100 @@
             }
         }
 
+        // Normalize API data from snake_case to camelCase that the frontend expects
+        function normalizeStudent(apiStudent) {
+            if (!apiStudent) return null;
+            // Build fullName: prefer fullName field, then first_name (which stores the full name in our system), then combine first+last
+            let fullName = apiStudent.fullName || apiStudent.first_name || '';
+            if (!fullName && (apiStudent.first_name || apiStudent.last_name)) {
+                fullName = ((apiStudent.first_name || '') + ' ' + (apiStudent.last_name || '')).trim();
+            }
+            if (!fullName) fullName = apiStudent.email || 'Unknown';
+            return {
+                id: apiStudent.id,
+                fullName: fullName,
+                studentId: apiStudent.studentId || apiStudent.student_id || (apiStudent.id ? apiStudent.id.substring(0, 8).toUpperCase() : ''),
+                classId: apiStudent.classId || apiStudent.class || '',
+                academicYear: apiStudent.academicYear || apiStudent.academic_year || '',
+                status: apiStudent.status || 'active',
+                guardianName: apiStudent.guardianName || apiStudent.guardian_name || '',
+                guardianPhone: apiStudent.guardianPhone || apiStudent.guardian_phone || apiStudent.phone || '',
+                email: apiStudent.email || '',
+                address: apiStudent.address || '',
+                notes: apiStudent.notes || '',
+                photo: apiStudent.photo || null,
+                createdAt: apiStudent.createdAt || apiStudent.created_at || apiStudent.enrollment_date || new Date().toISOString()
+            };
+        }
+
+        function normalizeClass(apiClass) {
+            return {
+                id: apiClass.id,
+                name: apiClass.name || apiClass.className || '',
+                description: apiClass.description || apiClass.department || '',
+                teacher: apiClass.teacher || apiClass.teacher_id || '',
+                room: apiClass.room || apiClass.schedule || '',
+                capacity: apiClass.capacity || 30,
+                academicYear: apiClass.academicYear || apiClass.academic_year || '',
+                createdAt: apiClass.createdAt || apiClass.created_at || new Date().toISOString()
+            };
+        }
+
+        function normalizeAttendance(apiRecord) {
+            return {
+                id: apiRecord.id,
+                studentId: apiRecord.studentId || apiRecord.student_id || '',
+                date: apiRecord.date || '',
+                status: apiRecord.status || '',
+                notes: apiRecord.notes || '',
+                createdAt: apiRecord.createdAt || apiRecord.created_at || new Date().toISOString()
+            };
+        }
+
+        function normalizeTask(apiTask) {
+            return {
+                id: apiTask.id,
+                title: apiTask.title || '',
+                description: apiTask.description || '',
+                assignedTo: apiTask.assignedTo || apiTask.assigned_to || '',
+                assignedBy: apiTask.assignedBy || apiTask.assigned_by || '',
+                priority: apiTask.priority || 'medium',
+                status: apiTask.status || 'pending',
+                category: apiTask.category || '',
+                dueDate: apiTask.dueDate || apiTask.due_date || '',
+                progress: apiTask.progress || 0,
+                ticketNumber: apiTask.ticketNumber || 'TK-' + (apiTask.id || '').substring(0, 6).toUpperCase(),
+                completionReport: apiTask.completionReport || apiTask.completion_report || '',
+                attachments: apiTask.attachments || [],
+                comments: apiTask.comments || [],
+                createdAt: apiTask.createdAt || apiTask.created_at || new Date().toISOString(),
+                completedAt: apiTask.completedAt || apiTask.completed_date || null
+            };
+        }
+
+        function normalizeIncident(apiIncident) {
+            return {
+                id: apiIncident.id,
+                studentId: apiIncident.studentId || apiIncident.student_id || '',
+                incidentType: apiIncident.incidentType || apiIncident.type || '',
+                description: apiIncident.description || '',
+                actionTaken: apiIncident.actionTaken || apiIncident.action_taken || '',
+                reportedBy: apiIncident.reportedBy || apiIncident.reported_by || '',
+                date: apiIncident.date || apiIncident.incident_date || '',
+                severity: apiIncident.severity || 'medium',
+                status: apiIncident.status || 'open',
+                followUpNotes: apiIncident.followUpNotes || apiIncident.follow_up_notes || '',
+                attachments: apiIncident.attachments || [],
+                createdAt: apiIncident.createdAt || apiIncident.created_at || new Date().toISOString()
+            };
+        }
+
+        // Normalize a list of API items using the given normalizer function
+        function normalizeApiList(apiList, normalizer) {
+            if (!Array.isArray(apiList)) return [];
+            return apiList.map(item => normalizer(item)).filter(item => item !== null);
+        }
+
         // Smart merge: combine local and API data, preferring the more complete dataset
         function smartMergeData(localData, apiData, idField = 'id') {
             if (!Array.isArray(apiData) || apiData.length === 0) {
@@ -5233,75 +5330,78 @@
             try {
                 let localDataPushed = false; // Track if we pushed local data to API
 
-                // Load students - smart merge
+                // Load students - normalize API data then smart merge
                 const studentsRes = await apiGet('/students');
                 if (studentsRes && studentsRes.success) {
                     const localStudents = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
-                    const merged = smartMergeData(localStudents, studentsRes.data);
+                    const normalizedApiStudents = normalizeApiList(studentsRes.data, normalizeStudent);
+                    const merged = smartMergeData(localStudents, normalizedApiStudents);
                     localStorage.setItem('attendance_students', JSON.stringify(merged));
                     // If API was empty but we have local data, push local data to API
                     if (localStudents.length > 0 && (!studentsRes.data || studentsRes.data.length === 0)) {
                         console.log('Pushing local students to database...');
                         for (const s of localStudents) {
                             await apiPost('/students', {
-                                id: s.id, first_name: s.firstName || s.first_name || '',
-                                last_name: s.lastName || s.last_name || '',
-                                email: s.email || '', phone: s.phone || '',
-                                class: s.class || s.className || '',
-                                group_name: s.group || s.group_name || '',
-                                academic_year: s.academicYear || s.academic_year || '',
+                                id: s.id, first_name: s.fullName || '',
+                                last_name: '', email: s.email || '', phone: s.guardianPhone || '',
+                                class: s.classId || '', group_name: '',
+                                academic_year: s.academicYear || '',
                                 status: s.status || 'active', photo: s.photo || '',
-                                enrollment_date: s.enrollmentDate || s.enrollment_date || '',
-                                notes: s.notes || ''
+                                enrollment_date: s.createdAt || '', notes: s.notes || '',
+                                guardian_name: s.guardianName || '',
+                                guardian_phone: s.guardianPhone || '',
+                                student_id: s.studentId || '',
+                                address: s.address || ''
                             }).catch(e => console.warn('Student sync failed:', e));
                         }
                         localDataPushed = true;
                     }
                 }
 
-                // Load classes - smart merge
+                // Load classes - normalize then smart merge
                 const classesRes = await apiGet('/classes');
                 if (classesRes && classesRes.success) {
                     const localClasses = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
-                    const merged = smartMergeData(localClasses, classesRes.data);
+                    const normalizedApiClasses = normalizeApiList(classesRes.data, normalizeClass);
+                    const merged = smartMergeData(localClasses, normalizedApiClasses);
                     localStorage.setItem('attendance_classes', JSON.stringify(merged));
                     if (localClasses.length > 0 && (!classesRes.data || classesRes.data.length === 0)) {
                         console.log('Pushing local classes to database...');
                         for (const c of localClasses) {
                             await apiPost('/classes', {
-                                id: c.id, name: c.name || c.className || '',
-                                level: c.level || '', department: c.department || '',
-                                academic_year: c.academicYear || c.academic_year || '',
+                                id: c.id, name: c.name || '',
+                                level: '', department: c.description || '',
+                                academic_year: c.academicYear || '',
                                 capacity: c.capacity || 30,
-                                teacher_id: c.teacherId || c.teacher_id || ''
+                                teacher_id: c.teacher || ''
                             }).catch(e => console.warn('Class sync failed:', e));
                         }
                         localDataPushed = true;
                     }
                 }
 
-                // Load attendance - smart merge
+                // Load attendance - normalize then smart merge
                 const attendanceRes = await apiGet('/attendance');
                 if (attendanceRes && attendanceRes.success) {
                     const localAttendance = loadFromStorage(STORAGE_KEYS.ATTENDANCE) || [];
-                    const merged = smartMergeData(localAttendance, attendanceRes.data);
+                    const normalizedApiAttendance = normalizeApiList(attendanceRes.data, normalizeAttendance);
+                    const merged = smartMergeData(localAttendance, normalizedApiAttendance);
                     localStorage.setItem('attendance_records', JSON.stringify(merged));
                     if (localAttendance.length > 0 && (!attendanceRes.data || attendanceRes.data.length === 0)) {
                         console.log('Pushing local attendance to database...');
                         for (const a of localAttendance) {
                             await apiPost('/attendance', {
-                                id: a.id, student_id: a.studentId || a.student_id || '',
+                                id: a.id, student_id: a.studentId || '',
                                 date: a.date || '', status: a.status || '',
-                                class: a.class || a.className || '',
-                                module: a.module || '', notes: a.notes || '',
-                                marked_by: a.markedBy || a.marked_by || ''
+                                class: '', module: '', notes: a.notes || '',
+                                marked_by: ''
                             }).catch(e => console.warn('Attendance sync failed:', e));
                         }
                         localDataPushed = true;
                     }
                 }
 
-                // Load users - smart merge
+                // Load users - smart merge (users keep API format, that's OK)
                 const usersRes = await apiGet('/users');
                 if (usersRes && usersRes.success) {
                     const localUsers = loadFromStorage(STORAGE_KEYS.USERS) || [];
@@ -5317,32 +5417,34 @@
                     localStorage.setItem('attendance_modules', JSON.stringify(merged));
                 }
 
-                // Load tasks - smart merge
+                // Load tasks - normalize then smart merge
                 const tasksRes = await apiGet('/tasks');
                 if (tasksRes && tasksRes.success) {
                     const localTasks = loadFromStorage(STORAGE_KEYS.TASKS) || [];
-                    const merged = smartMergeData(localTasks, tasksRes.data);
+                    const normalizedApiTasks = normalizeApiList(tasksRes.data, normalizeTask);
+                    const merged = smartMergeData(localTasks, normalizedApiTasks);
                     localStorage.setItem('attendance_tasks', JSON.stringify(merged));
                     if (localTasks.length > 0 && (!tasksRes.data || tasksRes.data.length === 0)) {
                         console.log('Pushing local tasks to database...');
                         for (const t of localTasks) {
                             await apiPost('/tasks', {
                                 id: t.id, title: t.title || '', description: t.description || '',
-                                assigned_to: t.assignedTo || t.assigned_to || '',
-                                assigned_by: t.assignedBy || t.assigned_by || '',
+                                assigned_to: t.assignedTo || '',
+                                assigned_by: t.assignedBy || '',
                                 priority: t.priority || 'medium', status: t.status || 'pending',
-                                category: t.category || '', due_date: t.dueDate || t.due_date || ''
+                                category: t.category || '', due_date: t.dueDate || ''
                             }).catch(e => console.warn('Task sync failed:', e));
                         }
                         localDataPushed = true;
                     }
                 }
 
-                // Load incidents - smart merge
+                // Load incidents - normalize then smart merge
                 const incidentsRes = await apiGet('/incidents');
                 if (incidentsRes && incidentsRes.success) {
                     const localIncidents = loadFromStorage(STORAGE_KEYS.INCIDENTS) || [];
-                    const merged = smartMergeData(localIncidents, incidentsRes.data);
+                    const normalizedApiIncidents = normalizeApiList(incidentsRes.data, normalizeIncident);
+                    const merged = smartMergeData(localIncidents, normalizedApiIncidents);
                     localStorage.setItem('attendance_incidents', JSON.stringify(merged));
                 }
 
@@ -6633,6 +6735,9 @@
                     applyRoleBasedNavigation();
                     showToast(translate('login_successful') || 'Login successful!');
                     
+                    // Run database migration first (adds missing columns)
+                    apiPost('/migrate', {}).catch(e => console.warn('Migration skipped:', e.message));
+                    
                     // Load data from database after successful login
                     loadFromDatabase().then(() => {
                         loadDashboard();
@@ -6837,15 +6942,18 @@
             try {
                 const mapping = {
                     'attendance_students': { endpoint: '/students', type: 'students', fields: s => ({
-                        id: s.id, first_name: s.firstName || s.first_name || '',
-                        last_name: s.lastName || s.last_name || '',
-                        email: s.email || '', phone: s.phone || '',
-                        class: s.class || s.className || '',
+                        id: s.id, first_name: s.fullName || s.firstName || s.first_name || '',
+                        last_name: '', email: s.email || '', phone: s.guardianPhone || s.phone || '',
+                        class: s.classId || s.class || s.className || '',
                         group_name: s.group || s.group_name || '',
                         academic_year: s.academicYear || s.academic_year || '',
                         status: s.status || 'active', photo: s.photo || '',
-                        enrollment_date: s.enrollmentDate || s.enrollment_date || '',
-                        notes: s.notes || ''
+                        enrollment_date: s.createdAt || s.enrollmentDate || s.enrollment_date || '',
+                        notes: s.notes || '',
+                        guardian_name: s.guardianName || '',
+                        guardian_phone: s.guardianPhone || s.phone || '',
+                        student_id: s.studentId || '',
+                        address: s.address || ''
                     })},
                     'attendance_classes': { endpoint: '/classes', type: 'classes', fields: c => ({
                         id: c.id, name: c.name || c.className || '',
@@ -6905,8 +7013,9 @@
                 // For arrays of data, sync each item individually via POST
                 if (Array.isArray(data) && config.fields) {
                     // Debounced full sync - only sync the most recent additions
-                    clearTimeout(window._syncSaveTimer);
-                    window._syncSaveTimer = setTimeout(async () => {
+                    clearTimeout(window._syncSaveTimers?.[key]);
+                    if (!window._syncSaveTimers) window._syncSaveTimers = {};
+                    window._syncSaveTimers[key] = setTimeout(async () => {
                         console.log(`Auto-syncing ${data.length} ${config.type} to database...`);
                         for (const item of data) {
                             if (item.id) {
@@ -8385,48 +8494,7 @@
             filterStudents();
         }
 
-        // This function is now enhanced and defined at the end of the file
-
-        function displayStudents(students, classes) {
-            const tbody = document.getElementById('studentsTableBody');
-            if (!tbody) return;
-            
-            tbody.innerHTML = students.map(student => {
-                const studentClass = classes.find(c => c.id === student.classId);
-                
-                return `
-                    <tr>
-                        <td>
-                            ${student.photo ? 
-                                `<img src="${student.photo}" class="photo-preview" style="width: 40px; height: 40px; cursor:pointer;" onclick="showStudentProfile('${student.id}')">` : 
-                                '<div style="width: 40px; height: 40px; background: var(--secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor:pointer;" onclick="showStudentProfile(\'${student.id}\')">👤</div>'
-                            }
-                        </td>
-                        <td><strong><a href="javascript:void(0)" onclick="showStudentProfile('${student.id}')" style="color:var(--primary);text-decoration:none;cursor:pointer;">${student.fullName}</a></strong></td>
-                        <td>${student.studentId}</td>
-                        <td>${studentClass ? studentClass.name : '-'}</td>
-                        <td>${student.guardianName || '-'}</td>
-                        <td>
-                            ${student.guardianPhone ? 
-                                `<div style="display: flex; align-items: center; gap: 5px;">
-                                    ${student.guardianPhone}
-                                    <button class="btn btn-sm btn-success" onclick="sendWhatsApp('${student.guardianPhone}', 'Hello from school!')" title="Send WhatsApp">📱</button>
-                                </div>` : 
-                                '-'
-                            }
-                        </td>
-                        <td>
-                            <div style="display: flex; gap: 5px;">
-                                <button class="btn btn-sm btn-secondary" onclick="showStudentProfile('${student.id}')" title="View Profile">👁️</button>
-                                <button class="btn btn-sm btn-secondary" onclick="editStudent('${student.id}')" title="Edit">✏️</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.id}')" title="Delete">🗑️</button>
-                                <button class="btn btn-sm btn-primary" onclick="generateStudentReportPDF('${student.id}')" title="Generate Report">📄</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        // displayStudents is defined later with enhanced batch-select support
 
         function saveStudent(event) {
             event.preventDefault();
@@ -8493,7 +8561,11 @@
                 class: student.classId || '', group_name: '',
                 academic_year: student.academicYear || '',
                 status: student.status || 'active', photo: student.photo || '',
-                enrollment_date: student.createdAt || '', notes: student.notes || ''
+                enrollment_date: student.createdAt || '', notes: student.notes || '',
+                guardian_name: student.guardianName || '',
+                guardian_phone: student.guardianPhone || '',
+                student_id: student.studentId || '',
+                address: student.address || ''
             }, editingId ? 'update' : 'create');
             
             showToast(editingId ? 'Student updated successfully' : 'Student added successfully');
@@ -8583,7 +8655,7 @@
             const modules = loadFromStorage(STORAGE_KEYS.MODULES) || [];
 
             const studentClass = classes.find(c => c.id === student.classId);
-            const studentAttendance = attendance.filter(a => a.studentId === studentId).sort((a,b) => b.date.localeCompare(a.date));
+            const studentAttendance = attendance.filter(a => a.studentId === studentId).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
             const studentGrades = grades.filter(g => g.studentId === studentId).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
             const studentBehaviors = behaviors.filter(b => b.studentId === studentId).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
             const studentIncidents = incidents.filter(i => i.studentId === studentId).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
@@ -8598,14 +8670,14 @@
 
             // Attendance streak calculation (consecutive present days from most recent)
             let currentStreak = 0;
-            const sortedAttendance = [...studentAttendance].sort((a,b) => b.date.localeCompare(a.date));
+            const sortedAttendance = [...studentAttendance].sort((a,b) => (b.date || '').localeCompare(a.date || ''));
             for (const rec of sortedAttendance) {
                 if (rec.status === 'present') currentStreak++;
                 else break;
             }
             // Best streak ever
             let bestStreak = 0, tempStreak = 0;
-            for (const rec of [...studentAttendance].sort((a,b) => a.date.localeCompare(b.date))) {
+            for (const rec of [...studentAttendance].sort((a,b) => (a.date || '').localeCompare(b.date || ''))) {
                 if (rec.status === 'present') { tempStreak++; bestStreak = Math.max(bestStreak, tempStreak); }
                 else { tempStreak = 0; }
             }
@@ -8982,8 +9054,8 @@
                 rowData.studentId = studentId.trim();
                 
                 // Check for duplicate student ID (case-insensitive)
-                const isDuplicate = students.some(s => s.studentId.toLowerCase() === rowData.studentId.toLowerCase()) || 
-                                  csvData.some(d => d.studentId.toLowerCase() === rowData.studentId.toLowerCase());
+                const isDuplicate = students.some(s => (s.studentId || '').toLowerCase() === (rowData.studentId || '').toLowerCase()) || 
+                                  csvData.some(d => (d.studentId || '').toLowerCase() === (rowData.studentId || '').toLowerCase());
                 
                 // Find class ID from class name (more flexible matching)
                 let classId = '';
@@ -9498,8 +9570,8 @@
             const yearFilter = document.getElementById('yearFilter')?.value || '';
             
             let filteredModules = modules.filter(module => {
-                const matchesSearch = module.name.toLowerCase().includes(searchTerm) ||
-                                    module.code.toLowerCase().includes(searchTerm) ||
+                const matchesSearch = (module.name || '').toLowerCase().includes(searchTerm) ||
+                                    (module.code || '').toLowerCase().includes(searchTerm) ||
                                     (module.instructor && module.instructor.toLowerCase().includes(searchTerm));
                 const matchesYear = !yearFilter || module.year === yearFilter;
                 return matchesSearch && matchesYear;
@@ -12638,7 +12710,7 @@
             const teachers = loadFromStorage(STORAGE_KEYS.TEACHERS) || [];
             
             const filteredTeachers = teachers.filter(teacher => {
-                const matchesSearch = teacher.name.toLowerCase().includes(searchTerm) ||
+                const matchesSearch = (teacher.name || '').toLowerCase().includes(searchTerm) ||
                                     (teacher.email && teacher.email.toLowerCase().includes(searchTerm)) ||
                                     (teacher.subject && teacher.subject.toLowerCase().includes(searchTerm));
                 const matchesSubject = !subjectFilter || teacher.subject === subjectFilter;
@@ -12756,7 +12828,7 @@
             const teachers = loadFromStorage(STORAGE_KEYS.TEACHERS) || [];
             
             // Check for duplicate names
-            const existingTeacher = teachers.find(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== editingId);
+            const existingTeacher = teachers.find(t => (t.name || '').toLowerCase() === name.toLowerCase() && t.id !== editingId);
             if (existingTeacher) {
                 showToast('Teacher with this name already exists', 'error');
                 return;
@@ -13811,25 +13883,29 @@
             const sortBy = document.getElementById('sortStudents')?.value || 'name';
             
             let filteredStudents = students.filter(student => {
-                const matchesSearch = student.fullName.toLowerCase().includes(searchTerm) ||
-                                    student.studentId.toLowerCase().includes(searchTerm) ||
-                                    (student.guardianName && student.guardianName.toLowerCase().includes(searchTerm));
+                // Null-safe string checks - prevent crash if fullName/studentId is null/undefined
+                const nameStr = (student.fullName || '').toLowerCase();
+                const idStr = (student.studentId || '').toLowerCase();
+                const guardianStr = (student.guardianName || '').toLowerCase();
+                const matchesSearch = nameStr.includes(searchTerm) ||
+                                    idStr.includes(searchTerm) ||
+                                    guardianStr.includes(searchTerm);
                 const matchesClass = !classFilter || student.classId === classFilter;
                 const matchesYear = !yearFilter || student.academicYear === yearFilter;
                 const matchesStatus = !statusFilter || student.status === statusFilter;
                 return matchesSearch && matchesClass && matchesYear && matchesStatus;
             });
             
-            // Sort students
+            // Sort students - null-safe
             filteredStudents.sort((a, b) => {
                 switch (sortBy) {
-                    case 'name': return a.fullName.localeCompare(b.fullName);
-                    case 'id': return a.studentId.localeCompare(b.studentId);
+                    case 'name': return (a.fullName || '').localeCompare(b.fullName || '');
+                    case 'id': return (a.studentId || '').localeCompare(b.studentId || '');
                     case 'class': 
                         const classA = classes.find(c => c.id === a.classId)?.name || '';
                         const classB = classes.find(c => c.id === b.classId)?.name || '';
                         return classA.localeCompare(classB);
-                    case 'date': return new Date(b.createdAt) - new Date(a.createdAt);
+                    case 'date': return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
                     default: return 0;
                 }
             });
@@ -14065,7 +14141,7 @@
 
             if (searchTerm) {
                 filteredTasks = filteredTasks.filter(t =>
-                    t.title.toLowerCase().includes(searchTerm) ||
+                    (t.title || '').toLowerCase().includes(searchTerm) ||
                     (t.description && t.description.toLowerCase().includes(searchTerm)) ||
                     (t.ticketNumber && t.ticketNumber.toLowerCase().includes(searchTerm))
                 );
@@ -14571,7 +14647,7 @@
 
             if (searchTerm) {
                 filteredIncidents = filteredIncidents.filter(inc =>
-                    inc.description.toLowerCase().includes(searchTerm) ||
+                    (inc.description || '').toLowerCase().includes(searchTerm) ||
                     (inc.actionTaken && inc.actionTaken.toLowerCase().includes(searchTerm))
                 );
             }
@@ -15047,7 +15123,7 @@
             const deptFilter = document.getElementById('employeeDeptFilter')?.value || '';
 
             let filtered = employees;
-            if (searchTerm) filtered = filtered.filter(e => e.fullName.toLowerCase().includes(searchTerm) || (e.email && e.email.toLowerCase().includes(searchTerm)));
+            if (searchTerm) filtered = filtered.filter(e => (e.fullName || '').toLowerCase().includes(searchTerm) || (e.email && e.email.toLowerCase().includes(searchTerm)));
             if (deptFilter) filtered = filtered.filter(e => e.department === deptFilter);
 
             const employeesList = document.getElementById('employeesList');
