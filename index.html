@@ -5320,11 +5320,38 @@
                 // No local data - use API data
                 return apiData;
             }
-            // Both have data - merge by ID, preferring API data but keeping local-only items
-            const apiIds = new Set(apiData.map(item => item[idField]));
-            const localOnly = localData.filter(item => !apiIds.has(item[idField]));
-            // API data takes precedence for matching IDs (it's the source of truth)
-            return [...apiData, ...localOnly];
+            // Both have data - merge by ID
+            // For matching IDs: prefer the record with more complete data
+            // (API data can be corrupted with empty fields from old buggy syncs)
+            const result = [];
+            const apiMap = new Map(apiData.map(item => [item[idField], item]));
+            const localMap = new Map(localData.map(item => [item[idField], item]));
+            const allIds = new Set([...apiMap.keys(), ...localMap.keys()]);
+            
+            for (const id of allIds) {
+                const apiItem = apiMap.get(id);
+                const localItem = localMap.get(id);
+                
+                if (apiItem && localItem) {
+                    // Both exist - prefer the one with more meaningful data
+                    // For students, prefer the one that has a non-empty fullName
+                    const apiHasName = (apiItem.fullName || apiItem.first_name || '').trim() !== '';
+                    const localHasName = (localItem.fullName || localItem.first_name || '').trim() !== '';
+                    
+                    if (localHasName && !apiHasName) {
+                        // Local has data, API is empty/corrupted - use local
+                        result.push(localItem);
+                    } else {
+                        // API is fine or both are fine - use API (source of truth)
+                        result.push(apiItem);
+                    }
+                } else if (apiItem) {
+                    result.push(apiItem);
+                } else {
+                    result.push(localItem);
+                }
+            }
+            return result;
         }
 
         // Load data from API into localStorage cache - SMART MERGE (never wipes local data)
@@ -8458,9 +8485,7 @@
             
             // Wait for modal to be created before populating dropdowns
             setTimeout(() => {
-                populateClassDropdowns();
-                populateAcademicYearDropdowns();
-                // Reset the form fields
+                // Reset the form fields FIRST (before populating dropdowns)
                 const form = document.getElementById('studentForm');
                 if (form) form.reset();
                 // Clear photo preview
@@ -8469,6 +8494,9 @@
                     photoPreview.classList.add('hidden');
                     photoPreview.src = '';
                 }
+                // THEN populate dropdowns (after reset, so they keep their options)
+                populateClassDropdowns();
+                populateAcademicYearDropdowns();
             }, 100);
             
             showModal('addStudentModal');
@@ -8980,6 +9008,20 @@
             students.push(student);
             saveToStorage(STORAGE_KEYS.STUDENTS, students);
             
+            // Sync to D1 database
+            syncItemToApi('student', {
+                id: student.id, first_name: student.fullName || '',
+                last_name: '', email: student.email || '', phone: student.guardianPhone || '',
+                class: student.classId || '', group_name: '',
+                academic_year: student.academicYear || '',
+                status: student.status || 'active', photo: student.photo || '',
+                enrollment_date: student.createdAt || '', notes: student.notes || '',
+                guardian_name: student.guardianName || '',
+                guardian_phone: student.guardianPhone || '',
+                student_id: student.studentId || '',
+                address: student.address || ''
+            }, 'create');
+            
             clearImportForm();
             showToast('Student imported successfully');
             loadStudents();
@@ -9312,6 +9354,25 @@
             
             saveToStorage(STORAGE_KEYS.STUDENTS, students);
             
+            // Sync all imported students to D1 database
+            validData.forEach(data => {
+                const student = students.find(s => s.studentId === data.studentId && s.fullName === data.fullName);
+                if (student) {
+                    syncItemToApi('student', {
+                        id: student.id, first_name: student.fullName || '',
+                        last_name: '', email: student.email || '', phone: student.guardianPhone || '',
+                        class: student.classId || '', group_name: '',
+                        academic_year: student.academicYear || '',
+                        status: student.status || 'active', photo: student.photo || '',
+                        enrollment_date: student.createdAt || '', notes: student.notes || '',
+                        guardian_name: student.guardianName || '',
+                        guardian_phone: student.guardianPhone || '',
+                        student_id: student.studentId || '',
+                        address: student.address || ''
+                    }, 'create');
+                }
+            });
+            
             showToast(`Successfully imported ${validData.length} students`);
             closeModal('importStudentsModal');
             loadStudents();
@@ -9361,6 +9422,26 @@
             });
 
             saveToStorage(STORAGE_KEYS.STUDENTS, students);
+            
+            // Sync selected imported students to D1 database
+            selectedData.forEach(data => {
+                const student = students.find(s => s.studentId === data.studentId && s.fullName === data.fullName);
+                if (student) {
+                    syncItemToApi('student', {
+                        id: student.id, first_name: student.fullName || '',
+                        last_name: '', email: student.email || '', phone: student.guardianPhone || '',
+                        class: student.classId || '', group_name: '',
+                        academic_year: student.academicYear || '',
+                        status: student.status || 'active', photo: student.photo || '',
+                        enrollment_date: student.createdAt || '', notes: student.notes || '',
+                        guardian_name: student.guardianName || '',
+                        guardian_phone: student.guardianPhone || '',
+                        student_id: student.studentId || '',
+                        address: student.address || ''
+                    }, 'create');
+                }
+            });
+            
             showToast(`✅ Successfully imported ${selectedData.length} selected student(s)`);
             closeModal('importStudentsModal');
             loadStudents();
@@ -9734,34 +9815,49 @@
         function markAttendance(studentId, status) {
             const attendance = loadFromStorage(STORAGE_KEYS.ATTENDANCE) || [];
             const selectedDate = document.getElementById('attendanceDate')?.value;
+            const selectedClass = document.getElementById('attendanceClassFilter')?.value || '';
             
             if (!selectedDate) {
                 showToast('Please select a date', 'error');
                 return;
             }
             
-            // Remove existing attendance for this student on this date
-            const filteredAttendance = attendance.filter(a => !(a.studentId === studentId && a.date === selectedDate));
+            // Check if attendance record already exists for this student+date
+            const existingIndex = attendance.findIndex(a => a.studentId === studentId && a.date === selectedDate);
+            let record;
+            let isUpdate = false;
             
-            // Add new attendance record
-            const record = {
-                id: generateId(),
-                studentId: studentId,
-                date: selectedDate,
-                status: status,
-                notes: '',
-                createdAt: new Date().toISOString()
-            };
+            if (existingIndex >= 0) {
+                // Update existing record
+                isUpdate = true;
+                record = {
+                    ...attendance[existingIndex],
+                    status: status,
+                    updatedAt: new Date().toISOString()
+                };
+                attendance[existingIndex] = record;
+            } else {
+                // Add new attendance record
+                record = {
+                    id: generateId(),
+                    studentId: studentId,
+                    date: selectedDate,
+                    status: status,
+                    classId: selectedClass,
+                    notes: '',
+                    createdAt: new Date().toISOString()
+                };
+                attendance.push(record);
+            }
             
-            filteredAttendance.push(record);
-            saveToStorage(STORAGE_KEYS.ATTENDANCE, filteredAttendance);
+            saveToStorage(STORAGE_KEYS.ATTENDANCE, attendance);
             
             // Sync attendance record to D1 database immediately
             syncItemToApi('attendance', {
                 id: record.id, student_id: record.studentId,
                 date: record.date, status: record.status,
-                class: '', module: '', notes: '', marked_by: ''
-            }, 'create');
+                class: record.classId || selectedClass || '', module: '', notes: '', marked_by: ''
+            }, isUpdate ? 'update' : 'create');
             
             // Auto-send WhatsApp message for absent and late students
             if (status === 'absent') {
@@ -11460,8 +11556,20 @@
             
             saveToStorage(STORAGE_KEYS.MODULES, modules);
             closeModal('addModuleModal');
+            
+            const wasEditing = !!editingId;
+            editingId = null;
+            
+            // Sync to D1 database
+            syncItemToApi('module', {
+                id: module.id, name: module.name || '', code: module.code || '',
+                class_id: '', teacher_id: module.instructor || '',
+                schedule: '', hours: module.credits || 0,
+                description: ''
+            }, wasEditing ? 'update' : 'create');
+            
             loadModules();
-            showToast(editingId ? 'Module updated successfully' : 'Module added successfully');
+            showToast(wasEditing ? 'Module updated successfully' : 'Module added successfully');
         }
 
         // Admin Users Management
@@ -13202,6 +13310,7 @@
                 const modules = loadFromStorage(STORAGE_KEYS.MODULES) || [];
                 const filteredModules = modules.filter(m => m.id !== id);
                 saveToStorage(STORAGE_KEYS.MODULES, filteredModules);
+                syncItemToApi('module', { id }, 'delete');
                 showToast('Module deleted successfully');
                 loadModules();
             }
@@ -14660,6 +14769,7 @@
                 const tasks = loadFromStorage(STORAGE_KEYS.TASKS) || [];
                 const filtered = tasks.filter(t => t.id !== taskId);
                 saveToStorage(STORAGE_KEYS.TASKS, filtered);
+                syncItemToApi('task', { id: taskId }, 'delete');
                 closeModal('taskDetailModal');
                 loadTasks();
                 showToast(translate('delete') || 'Task deleted');
@@ -14995,6 +15105,7 @@
                 const incidents = loadFromStorage(STORAGE_KEYS.INCIDENTS) || [];
                 const filtered = incidents.filter(i => i.id !== incidentId);
                 saveToStorage(STORAGE_KEYS.INCIDENTS, filtered);
+                syncItemToApi('incident', { id: incidentId }, 'delete');
                 closeModal('incidentDetailModal');
                 loadIncidents();
                 showToast(translate('delete') || 'Incident deleted');
