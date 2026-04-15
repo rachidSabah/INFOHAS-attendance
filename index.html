@@ -11147,14 +11147,14 @@
                 let html = '';
                 Object.keys(categorizedTemplates).forEach(category => {
                     if (categorizedTemplates[category].length > 0) {
-                        html += `<h4 style="margin: 20px 0 10px 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 5px;">${categoryLabels[category] || '📝 ' + category}</h4>`;
+                        html += `<h4 style="margin: 20px 0 10px 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 5px;">${categoryLabels[category] || '📝 ' + escapeHtml(category)}</h4>`;
                         
                         html += categorizedTemplates[category].map(template => `
                             <div class="card" style="margin-bottom: 10px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                     <div>
-                                        <h4 style="margin: 0;">${template.name}</h4>
-                                        <small style="color: var(--text-light); font-style: italic;">${categoryLabels[template.category] || template.category || 'Custom'}</small>
+                                        <h4 style="margin: 0;">${escapeHtml(template.name)}</h4>
+                                        <small style="color: var(--text-light); font-style: italic;">${categoryLabels[template.category] || escapeHtml(template.category || 'Custom')}</small>
                                     </div>
                                     <div>
                                         <button class="btn btn-sm btn-secondary" onclick="editTemplate('${template.id}')" title="Edit">✏️</button>
@@ -11162,7 +11162,7 @@
                                     </div>
                                 </div>
                                 <div style="padding: 10px; background: var(--secondary); border-radius: 8px; font-size: 14px;">
-                                    ${template.content}
+                                    ${escapeHtml(template.content)}
                                 </div>
                             </div>
                         `).join('');
@@ -11929,7 +11929,7 @@
             
             tbody.innerHTML = admins.map(admin => `
                 <tr>
-                    <td><strong>${admin.username}</strong></td>
+                    <td><strong>${escapeHtml(admin.username)}</strong></td>
                     <td>${formatDate(admin.createdAt)}</td>
                     <td>
                         <div style="display: flex; gap: 5px;">
@@ -15627,8 +15627,8 @@
                         <strong>${escapeHtml(emp.fullName)}</strong>
                         <span class="role-badge employee" style="margin-left:8px;">${translate('employee') || 'Employee'}</span>
                         <div style="font-size:12px;color:var(--text-light);">
-                            ${emp.department ? emp.department : ''} ${emp.position ? '• ' + emp.position : ''}
-                            ${emp.email ? '• ' + emp.email : ''}
+                            ${emp.department ? escapeHtml(emp.department) : ''} ${emp.position ? '• ' + escapeHtml(emp.position) : ''}
+                            ${emp.email ? '• ' + escapeHtml(emp.email) : ''}
                         </div>
                     </div>
                     <div style="display:flex;gap:5px;">
@@ -15662,8 +15662,8 @@
                         <strong>${escapeHtml(emp.fullName)}</strong>
                         <span class="role-badge employee" style="margin-left:8px;">${translate('employee') || 'Employee'}</span>
                         <div style="font-size:12px;color:var(--text-light);">
-                            ${emp.department ? emp.department : ''} ${emp.position ? '• ' + emp.position : ''}
-                            ${emp.email ? '• ' + emp.email : ''}
+                            ${emp.department ? escapeHtml(emp.department) : ''} ${emp.position ? '• ' + escapeHtml(emp.position) : ''}
+                            ${emp.email ? '• ' + escapeHtml(emp.email) : ''}
                         </div>
                     </div>
                     <div style="display:flex;gap:5px;">
