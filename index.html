@@ -3692,10 +3692,6 @@
                     <span id="loginText" data-translate="sign_in">Sign In</span>
                 </button>
             </form>
-            <p style="margin-top: 20px; color: var(--text-light); font-size: 14px;">
-                Default: admin / admin123<br>
-                <small>Teachers & Employees can also login</small>
-            </p>
             <p style="margin-top: 15px; text-align: center; color: var(--text-light); font-size: 14px;">
                 New school? <a href="#" onclick="showRegistrationScreen(); return false;" style="color:var(--primary);font-weight:600;text-decoration:none;">Create Your School</a>
             </p>
@@ -3907,11 +3903,12 @@
 
                 <!-- Attendance Chart Widget -->
                 <div class="dashboard-widget" data-widget="attendanceChart" id="widgetAttendanceChart">
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="card" style="cursor:pointer;" onclick="goToAttendanceAnalytics(event)">
+                        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
                             <h2 class="card-title">📊 <span data-translate="weekly_attendance_chart">Weekly Attendance</span></h2>
+                            <span style="font-size:0.75rem;color:var(--text-light);" data-translate="click_for_details">Click for details</span>
                         </div>
-                        <div style="padding:10px;height:260px;cursor:pointer;">
+                        <div style="padding:10px;height:260px;">
                             <canvas id="dashboardAttendanceChart"></canvas>
                         </div>
                     </div>
@@ -6161,6 +6158,7 @@
                 settings_reset: 'Dashboard reset to default!',
                 attendanceChart: 'Weekly Chart',
                 weekly_attendance_chart: 'Weekly Attendance',
+                click_for_details: 'Click for details',
 
                 // Attendance Trends/Streaks
                 trends: 'Trends',
@@ -6694,6 +6692,7 @@
                 settings_reset: 'Tableau de bord réinitialisé !',
                 attendanceChart: 'Graphique hebdomadaire',
                 weekly_attendance_chart: 'Présence hebdomadaire',
+                click_for_details: 'Cliquer pour détails',
 
                 // Tendances de présence
                 trends: 'Tendances',
@@ -6946,6 +6945,9 @@
                 if (result && result.success) {
                     apiToken = result.token;
                     currentUser = result.user;
+                    // Store password locally so change-password can verify current password
+                    // (API login does not return password in user object)
+                    currentUser.password = password;
                     const auth = {
                         userId: result.user.id,
                         userRole: result.user.role,
@@ -8249,6 +8251,36 @@
         // ===== Dashboard Attendance Chart =====
         let dashboardChartInstance = null;
 
+        function goToAttendanceAnalytics(event, specificDate) {
+            // Prevent double-fire if click originates from canvas (chart onClick also fires)
+            if (event && event.target && event.target.tagName === 'CANVAS') {
+                return; // Let the chart's own onClick handle it
+            }
+            // Navigate to reports page and show overview analytics
+            showPage('reports');
+            // Activate the overview tab to show analytics charts
+            showReportTab('overview');
+            // If a specific date was clicked on the chart, pre-fill the detailed report filters
+            if (specificDate) {
+                setTimeout(() => {
+                    const startDate = document.getElementById('reportStartDate');
+                    const endDate = document.getElementById('reportEndDate');
+                    if (startDate && endDate) {
+                        startDate.value = specificDate;
+                        endDate.value = specificDate;
+                    }
+                    // Also filter the detailed reports to show that specific day
+                    showReportTab('detailed');
+                    filterReports();
+                }, 500);
+            } else {
+                // No specific date - just load the overview analytics
+                setTimeout(() => {
+                    loadReportCharts();
+                }, 300);
+            }
+        }
+
         function renderDashboardChart() {
             // Delay to ensure DOM is ready and canvas is visible
             setTimeout(() => {
@@ -8327,7 +8359,12 @@
                             maintainAspectRatio: false,
                             onClick: (event, elements) => {
                                 if (elements.length > 0) {
-                                    showPage('reports');
+                                    const idx = elements[0].index;
+                                    const today = new Date();
+                                    const d = new Date(today);
+                                    d.setDate(today.getDate() - (6 - idx));
+                                    const dateStr = d.toISOString().split('T')[0];
+                                    goToAttendanceAnalytics(null, dateStr);
                                 }
                             },
                             plugins: {
@@ -15950,7 +15987,9 @@
             }
 
             // Validate current password locally
-            if (currentUser.password !== currentPassword) {
+            // If password is not available in currentUser (API login doesn't return it),
+            // we'll rely on the API to validate it
+            if (currentUser.password && currentUser.password !== currentPassword) {
                 showToast(translate('password_current_incorrect') || 'Current password is incorrect', 'error');
                 return;
             }
@@ -15991,6 +16030,18 @@
                     updateLocalPassword(newPassword);
                     showToast(translate('password_changed_success') || 'Password changed successfully!');
                     closeModal('changePasswordModal');
+                } else if (apiResult && apiResult.error) {
+                    // API returned an error (e.g. wrong current password)
+                    // Only reject if we didn't validate locally already
+                    if (!currentUser.password) {
+                        // We couldn't validate locally, so trust the API error
+                        showToast(apiResult.error || translate('password_current_incorrect') || 'Current password is incorrect', 'error');
+                    } else {
+                        // We already validated locally, proceed with local update
+                        updateLocalPassword(newPassword);
+                        showToast(translate('password_changed_success') || 'Password changed successfully!');
+                        closeModal('changePasswordModal');
+                    }
                 } else {
                     // Fallback to local update only
                     updateLocalPassword(newPassword);
@@ -15998,7 +16049,7 @@
                     closeModal('changePasswordModal');
                 }
             } catch (e) {
-                // Fallback to local update only
+                // Fallback to local update only (API unavailable)
                 updateLocalPassword(newPassword);
                 showToast(translate('password_changed_success') || 'Password changed successfully!');
                 closeModal('changePasswordModal');
