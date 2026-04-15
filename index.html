@@ -16956,9 +16956,10 @@
         let saTenantsCache = [];
 
         function showSuperAdminTab(tabName) {
-            document.querySelectorAll('#superadminPage .tab-content').forEach(tc => tc.style.display = 'none');
+            document.querySelectorAll('#superadminPage .tab-content').forEach(tc => { tc.style.display = 'none'; tc.classList.remove('active'); });
             document.querySelectorAll('#superadminPage .tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab').style.display = '';
+            const targetTab = document.getElementById('sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab');
+            if (targetTab) { targetTab.style.display = 'block'; targetTab.classList.add('active'); }
             document.querySelector(`[onclick="showSuperAdminTab('${tabName}')"]`)?.classList.add('active');
             if (tabName === 'tenants' || tabName === 'overview') {
                 loadSuperAdminData();
@@ -17126,6 +17127,7 @@
                 const result = await apiPut('/saas/tenants/' + tenantId, { status: 'suspended' });
                 if (result && result.success) {
                     showToast('Tenant suspended');
+                    logSuperAdminActivity('data', 'School Suspended', 'Suspended school: ' + tenantId);
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to suspend: ' + (result?.error || 'Unknown error'), 'error');
@@ -17140,6 +17142,7 @@
                 const result = await apiPut('/saas/tenants/' + tenantId, { status: 'active' });
                 if (result && result.success) {
                     showToast('Tenant activated');
+                    logSuperAdminActivity('data', 'School Activated', 'Activated school: ' + tenantId);
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to activate: ' + (result?.error || 'Unknown error'), 'error');
@@ -17225,6 +17228,7 @@
                 const result = await apiDelete('/saas/tenants/' + id);
                 if (result && result.success) {
                     showToast('School deleted permanently');
+                    logSuperAdminActivity('data', 'School Deleted', 'Permanently deleted school: ' + id);
                     document.getElementById('saDeleteTenantModal').classList.add('hidden');
                     loadSuperAdminData();
                 } else {
@@ -17277,6 +17281,7 @@
                 const result = await apiPut('/saas/tenants/' + id, data);
                 if (result && result.success) {
                     showToast('School updated successfully');
+                    logSuperAdminActivity('data', 'School Modified', 'Updated school: ' + id + ' (' + data.name + ')');
                     document.getElementById('saEditTenantModal').classList.add('hidden');
                     loadSuperAdminData();
                 } else {
@@ -17319,6 +17324,7 @@
                 }
                 // Update API token
                 if (typeof apiToken !== 'undefined') apiToken = result.token;
+                logSuperAdminActivity('login', 'School Switch', 'Switched to school: ' + tenantName);
                 showToast(`Switched to ${tenantName}. Click "Return to Super Admin" to go back.`);
                 // Show return button
                 showReturnToSuperAdminButton();
@@ -17451,6 +17457,7 @@
 
                 if (result && result.success) {
                     showToast('School "' + name + '" created successfully!');
+                    logSuperAdminActivity('data', 'School Created', 'Created new school: ' + name + ' (' + slug + ')');
                     document.getElementById('saCreateSchoolModal').classList.add('hidden');
                     loadSuperAdminData();
                 } else {
