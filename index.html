@@ -7836,8 +7836,8 @@
                 <div class="notif-item" onclick="${n.action || ''};document.getElementById('notifPanel').style.display='none';">
                     <div class="notif-item-icon">${n.icon}</div>
                     <div class="notif-item-content">
-                        <div class="notif-item-title">${n.title}</div>
-                        <div class="notif-item-text">${n.text}</div>
+                        <div class="notif-item-title">${escapeHtml(n.title)}</div>
+                        <div class="notif-item-text">${escapeHtml(n.text)}</div>
                     </div>
                 </div>
             `).join('');
@@ -9113,7 +9113,7 @@
                 <!-- Header -->
                 <div class="profile-header">
                     <div class="profile-avatar">
-                        ${student.photo ? `<img src="${student.photo}" alt="${student.fullName}">` : '👤'}
+                        ${student.photo ? `<img src="${escapeHtml(student.photo)}" alt="${escapeHtml(student.fullName)}">` : '👤'}
                     </div>
                     <div style="flex:1;min-width:0;">
                         <h3 class="profile-name">${escapeHtml(student.fullName)}</h3>
@@ -9575,11 +9575,11 @@
                     <tr class="${rowClass}" data-csv-idx="${idx}">
                         <td><input type="checkbox" class="csv-row-checkbox" data-csv-idx="${idx}" ${row.valid ? '' : 'disabled'} onchange="updateCsvSelection()"></td>
                         <td><span title="${statusText}">${statusIcon}</span></td>
-                        <td>${row.fullName}</td>
-                        <td>${row.studentId}</td>
-                        <td class="csv-class-cell" data-csv-idx="${idx}">${effectiveClassName}</td>
-                        <td>${row.academicYear || '-'}</td>
-                        <td>${row.guardianName || '-'}</td>
+                        <td>${escapeHtml(row.fullName || '')}</td>
+                        <td>${escapeHtml(row.studentId || '')}</td>
+                        <td class="csv-class-cell" data-csv-idx="${idx}">${escapeHtml(effectiveClassName || '')}</td>
+                        <td>${escapeHtml(row.academicYear || '-')}</td>
+                        <td>${escapeHtml(row.guardianName || '-')}</td>
                     </tr>
                 `;
             });
@@ -14241,7 +14241,7 @@
                         ${batchCol}
                         <td>
                             ${student.photo ? 
-                                `<img src="${student.photo}" class="photo-preview" style="width: 40px; height: 40px;">` : 
+                                `<img src="${escapeHtml(student.photo)}" class="photo-preview" style="width: 40px; height: 40px;">` : 
                                 '<div style="width: 40px; height: 40px; background: var(--secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">👤</div>'
                             }
                         </td>
@@ -14587,7 +14587,7 @@
                                     <label class="form-label">${translate('assigned_to') || 'Assigned To'} *</label>
                                     <select id="taskAssignTo" class="form-select" required>
                                         <option value="">Select User</option>
-                                        ${users.map(u => `<option value="${u.id}">${u.fullName || u.username} (${translate(u.role) || u.role})</option>`).join('')}
+                                        ${users.map(u => `<option value="${u.id}">${escapeHtml(u.fullName || u.username)} (${translate(u.role) || u.role})</option>`).join('')}
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -15068,7 +15068,7 @@
                                 <label class="form-label">${translate('student') || 'Student'} *</label>
                                 <select id="incidentStudent" class="form-select" required>
                                     <option value="">Select Student</option>
-                                    ${students.map(s => `<option value="${s.id}">${s.fullName} (${s.studentId})</option>`).join('')}
+                                    ${students.map(s => `<option value="${s.id}">${escapeHtml(s.fullName)} (${escapeHtml(s.studentId || '')})</option>`).join('')}
                                 </select>
                             </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
@@ -16146,7 +16146,7 @@
             const currentYear = academicYears.find(y => y.isCurrent) || academicYears[0];
             const cardId = 'ID-' + (student.studentId || student.id.substring(0, 8)).toUpperCase();
             const initials = student.fullName ? student.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
-            const avatarHtml = student.photo ? `<img src="${student.photo}" alt="${student.fullName}">` : initials;
+            const avatarHtml = student.photo ? `<img src="${escapeHtml(student.photo)}" alt="${escapeHtml(student.fullName)}">` : initials;
             const preview = document.getElementById('studentCardPreview');
             if (preview) {
                 preview.style.width = '';
@@ -16198,7 +16198,7 @@
                     const studentClass = classes.find(c => c.id === student.classId);
                     const cardId = 'ID-' + (student.studentId || student.id.substring(0, 8)).toUpperCase();
                     const initials = student.fullName ? student.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
-                    const avatarHtml = student.photo ? `<img src="${student.photo}" alt="${student.fullName}">` : initials;
+                    const avatarHtml = student.photo ? `<img src="${escapeHtml(student.photo)}" alt="${escapeHtml(student.fullName)}">` : initials;
                     return `
                         <div class="student-card-preview">
                             <div class="card-school-name">${schoolName}</div>
@@ -16206,9 +16206,9 @@
                             <div class="card-student-info">
                                 <div class="card-avatar">${avatarHtml}</div>
                                 <div class="card-details">
-                                    <div class="card-student-name">${student.fullName}</div>
-                                    <div class="card-student-id">${cardId}</div>
-                                    <div class="card-student-class">${studentClass ? studentClass.name : '-'}</div>
+                                    <div class="card-student-name">${escapeHtml(student.fullName)}</div>
+                                    <div class="card-student-id">${escapeHtml(cardId)}</div>
+                                    <div class="card-student-class">${studentClass ? escapeHtml(studentClass.name) : '-'}</div>
                                 </div>
                             </div>
                             <div class="card-footer">
