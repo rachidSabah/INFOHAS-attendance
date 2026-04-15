@@ -4916,7 +4916,6 @@
                 <div class="tabs">
                     <button class="tab active" onclick="showSuperAdminTab('overview')">Overview</button>
                     <button class="tab" onclick="showSuperAdminTab('tenants')">Tenants</button>
-                    <button class="tab" onclick="showSuperAdminTab('subscriptions')">Subscriptions</button>
                 </div>
 
                 <!-- Overview Tab -->
@@ -4969,7 +4968,6 @@
                                     <tr>
                                         <th>School Name</th>
                                         <th>Slug</th>
-                                        <th>Plan</th>
                                         <th>Students</th>
                                         <th>Users</th>
                                         <th>Status</th>
@@ -4981,53 +4979,6 @@
                                     <tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:20px;">Loading tenants...</td></tr>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Subscriptions Tab -->
-                <div id="saSubscriptionsTab" class="tab-content" style="display:none;">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="card-title">💳 Subscription Management</h2>
-                        </div>
-                        <div style="padding:16px;">
-                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;">
-                                <div class="card" style="border:2px solid #e5e7eb;padding:20px;">
-                                    <h3 style="font-size:18px;margin-bottom:8px;">🆓 Free Plan</h3>
-                                    <div style="font-size:24px;font-weight:700;color:var(--text-light);margin-bottom:12px;">$0<span style="font-size:14px;font-weight:400;">/month</span></div>
-                                    <ul style="list-style:none;padding:0;font-size:14px;line-height:2;">
-                                        <li>✓ Up to 50 students</li>
-                                        <li>✓ Up to 2 users</li>
-                                        <li>✓ Basic attendance</li>
-                                        <li>✗ No WhatsApp integration</li>
-                                        <li>✗ No advanced reports</li>
-                                    </ul>
-                                </div>
-                                <div class="card" style="border:2px solid var(--primary);padding:20px;position:relative;">
-                                    <div style="position:absolute;top:-10px;right:16px;background:var(--primary);color:white;padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">POPULAR</div>
-                                    <h3 style="font-size:18px;margin-bottom:8px;">⭐ Pro Plan</h3>
-                                    <div style="font-size:24px;font-weight:700;color:var(--primary);margin-bottom:12px;">$19<span style="font-size:14px;font-weight:400;">/month</span></div>
-                                    <ul style="list-style:none;padding:0;font-size:14px;line-height:2;">
-                                        <li>✓ Up to 500 students</li>
-                                        <li>✓ Up to 10 users</li>
-                                        <li>✓ Full attendance + grades</li>
-                                        <li>✓ WhatsApp messaging</li>
-                                        <li>✓ Advanced reports</li>
-                                    </ul>
-                                </div>
-                                <div class="card" style="border:2px solid #f59e0b;padding:20px;">
-                                    <h3 style="font-size:18px;margin-bottom:8px;">🏢 Enterprise Plan</h3>
-                                    <div style="font-size:24px;font-weight:700;color:#f59e0b;margin-bottom:12px;">$49<span style="font-size:14px;font-weight:400;">/month</span></div>
-                                    <ul style="list-style:none;padding:0;font-size:14px;line-height:2;">
-                                        <li>✓ Unlimited students</li>
-                                        <li>✓ Unlimited users</li>
-                                        <li>✓ All Pro features</li>
-                                        <li>✓ Custom branding</li>
-                                        <li>✓ Priority support</li>
-                                    </ul>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -16546,18 +16497,11 @@
                     ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">Suspended</span>'
                     : '<span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">' + (t.status || 'Unknown') + '</span>';
 
-                const planBadge = t.plan === 'pro'
-                    ? '<span style="background:#ede9fe;color:#6d28d9;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">Pro</span>'
-                    : t.plan === 'enterprise'
-                    ? '<span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">Enterprise</span>'
-                    : '<span style="background:#f1f5f9;color:#475569;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">Free</span>';
-
                 const created = t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A';
 
                 return `<tr>
                     <td style="font-weight:600;">${t.name || 'Unknown'}</td>
                     <td><code style="background:var(--secondary);padding:2px 8px;border-radius:4px;font-size:13px;">${t.slug || ''}</code></td>
-                    <td>${planBadge}</td>
                     <td>${t.student_count || 0}</td>
                     <td>${t.user_count || 0}</td>
                     <td>${statusBadge}</td>
@@ -16565,7 +16509,6 @@
                     <td>
                         <div style="display:flex;gap:6px;">
                             <button class="btn btn-sm btn-info" onclick="viewTenantDetail('${t.id}')" title="View Details">👁️</button>
-                            <button class="btn btn-sm btn-primary" onclick="changeTenantPlan('${t.id}', '${t.plan || 'free'}')" title="Change Plan">💳</button>
                             ${t.status === 'active'
                                 ? `<button class="btn btn-sm" style="background:#f59e0b;color:white;" onclick="suspendTenant('${t.id}')" title="Suspend">⏸️</button>`
                                 : `<button class="btn btn-sm btn-success" onclick="activateTenant('${t.id}')" title="Activate">▶️</button>`
@@ -16585,8 +16528,7 @@
             }
             const filtered = saTenantsCache.filter(t =>
                 (t.name || '').toLowerCase().includes(search) ||
-                (t.slug || '').toLowerCase().includes(search) ||
-                (t.plan || '').toLowerCase().includes(search)
+                (t.slug || '').toLowerCase().includes(search)
             );
             renderSuperAdminTenants(filtered);
         }
@@ -16605,8 +16547,6 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                         <div><strong>School Name:</strong> ${t.name || 'N/A'}</div>
                         <div><strong>Slug:</strong> <code>${t.slug || 'N/A'}</code></div>
-                        <div><strong>Plan:</strong> ${t.plan || 'free'}</div>
-                        <div><strong>Subscription Status:</strong> ${t.subscription_status || 'N/A'}</div>
                         <div><strong>Status:</strong> ${t.status || 'N/A'}</div>
                         <div><strong>Country:</strong> ${t.country || 'N/A'}</div>
                         <div><strong>Language:</strong> ${t.language || 'N/A'}</div>
@@ -16617,7 +16557,6 @@
                         <div><strong>Logo URL:</strong> ${t.logo_url ? '<a href="' + t.logo_url + '" target="_blank">View</a>' : 'None'}</div>
                     </div>
                     <div style="margin-top:20px;display:flex;gap:10px;">
-                        <button class="btn btn-primary" onclick="changeTenantPlan('${t.id}', '${t.plan || 'free'}')">Change Plan</button>
                         ${t.status === 'active'
                             ? `<button class="btn" style="background:#f59e0b;color:white;" onclick="suspendTenant('${t.id}')">Suspend</button>`
                             : `<button class="btn btn-success" onclick="activateTenant('${t.id}')">Activate</button>`
@@ -16627,28 +16566,6 @@
                 modal.classList.remove('hidden');
             } catch (e) {
                 showToast('Error loading tenant: ' + e.message, 'error');
-            }
-        }
-
-        async function changeTenantPlan(tenantId, currentPlan) {
-            const plans = ['free', 'pro', 'enterprise'];
-            const planNames = { free: 'Free ($0/mo)', pro: 'Pro ($19/mo)', enterprise: 'Enterprise ($49/mo)' };
-            const options = plans.filter(p => p !== currentPlan).map(p => `${p}: ${planNames[p]}`).join('\n');
-            const newPlan = prompt(`Current plan: ${planNames[currentPlan] || currentPlan}\n\nEnter new plan:\n${options}`);
-            if (!newPlan || !plans.includes(newPlan.toLowerCase())) {
-                if (newPlan !== null) showToast('Invalid plan. Use: free, pro, or enterprise', 'error');
-                return;
-            }
-            try {
-                const result = await apiPut('/saas/tenants/' + tenantId, { plan: newPlan.toLowerCase() });
-                if (result && result.success) {
-                    showToast('Plan updated to ' + planNames[newPlan.toLowerCase()]);
-                    loadSuperAdminData();
-                } else {
-                    showToast('Failed to update plan: ' + (result?.error || 'Unknown error'), 'error');
-                }
-            } catch (e) {
-                showToast('Error updating plan: ' + e.message, 'error');
             }
         }
 
