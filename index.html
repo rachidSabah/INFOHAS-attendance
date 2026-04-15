@@ -9878,8 +9878,8 @@
                                     <strong>${classStudents.length}</strong> ${translate('students')}
                                 </div>
                                 <div style="font-size: 12px; color: var(--text-light);">
-                                    ${cls.teacher ? `${translate('instructor')}: ${cls.teacher}` : ''}
-                                    ${cls.room ? `Room: ${cls.room}` : ''}
+                                    ${cls.teacher ? `${translate('instructor')}: ${escapeHtml(cls.teacher)}` : ''}
+                                    ${cls.room ? `Room: ${escapeHtml(cls.room)}` : ''}
                                 </div>
                             </div>
                         </div>
@@ -10045,11 +10045,11 @@
                 
                 return `
                     <tr>
-                        <td><strong>${module.name}</strong></td>
-                        <td>${module.code}</td>
-                        <td>${module.year}</td>
-                        <td>${module.credits}</td>
-                        <td>${module.instructor || '-'}</td>
+                        <td><strong>${escapeHtml(module.name || '')}</strong></td>
+                        <td>${escapeHtml(module.code || '')}</td>
+                        <td>${escapeHtml(module.year || '')}</td>
+                        <td>${module.credits || '-'}</td>
+                        <td>${escapeHtml(module.instructor || '-')}</td>
                         <td>${enrolledStudents.length}</td>
                         <td>
                             <div style="display: flex; gap: 5px;">
@@ -12612,15 +12612,142 @@
             try {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                
-                // Generate report based on type
-                doc.setFontSize(16);
-                doc.text(`Custom ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`, 105, 20, { align: 'center' });
-                
+                const students = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
+                const classes = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
+                const attendance = loadFromStorage(STORAGE_KEYS.ATTENDANCE) || [];
+                const grades = loadFromStorage(STORAGE_KEYS.GRADES) || [];
+                const behavior = loadFromStorage(STORAGE_KEYS.BEHAVIOR) || [];
+                const schoolInfo = loadFromStorage(STORAGE_KEYS.SCHOOL_INFO) || {};
+
+                // Header
+                doc.setFontSize(18);
+                doc.text(schoolInfo.name || 'School Name', 105, 15, { align: 'center' });
+                doc.setFontSize(12);
+                doc.text(`Custom ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`, 105, 25, { align: 'center' });
+                doc.setFontSize(9);
+                let dateRangeText = '';
+                if (startDate && endDate) dateRangeText = `${startDate} to ${endDate}`;
+                else if (startDate) dateRangeText = `From ${startDate}`;
+                else if (endDate) dateRangeText = `Until ${endDate}`;
+                if (dateRangeText) doc.text(dateRangeText, 105, 32, { align: 'center' });
+                if (classFilter) {
+                    const cls = classes.find(c => c.id === classFilter);
+                    doc.text(`Class: ${cls ? cls.name : classFilter}`, 105, 38, { align: 'center' });
+                }
+
+                let yPos = 48;
+
+                // Filter data by date range
+                const filterByDate = (records, dateField = 'date') => {
+                    let filtered = records;
+                    if (startDate) filtered = filtered.filter(r => r[dateField] >= startDate);
+                    if (endDate) filtered = filtered.filter(r => r[dateField] <= endDate);
+                    return filtered;
+                };
+
+                // Filter students by class
+                const filterStudentsByClass = (studentList) => {
+                    if (!classFilter) return studentList;
+                    return studentList.filter(s => s.classId === classFilter);
+                };
+
+                const filteredStudents = filterStudentsByClass(students);
+                const filteredAttendance = filterByDate(attendance);
+                const filteredGrades = filterByDate(grades);
+                const filteredBehavior = filterByDate(behavior);
+
+                if (reportType === 'attendance') {
+                    doc.setFontSize(13);
+                    doc.text('Attendance Summary', 20, yPos); yPos += 10;
+                    doc.setFontSize(10);
+                    const presentCount = filteredAttendance.filter(a => a.status === 'present').length;
+                    const absentCount = filteredAttendance.filter(a => a.status === 'absent').length;
+                    const lateCount = filteredAttendance.filter(a => a.status === 'late').length;
+                    const excusedCount = filteredAttendance.filter(a => a.status === 'excused').length;
+                    const total = filteredAttendance.length;
+                    const rate = total > 0 ? (presentCount / total * 100).toFixed(1) : '0';
+                    doc.text(`Total Records: ${total}`, 20, yPos); yPos += 7;
+                    doc.text(`Present: ${presentCount} | Absent: ${absentCount} | Late: ${lateCount} | Excused: ${excusedCount}`, 20, yPos); yPos += 7;
+                    doc.text(`Attendance Rate: ${rate}%`, 20, yPos); yPos += 12;
+
+                    if (filteredStudents.length > 0) {
+                        doc.setFontSize(11);
+                        doc.text('Per Student:', 20, yPos); yPos += 8;
+                        doc.setFontSize(9);
+                        filteredStudents.forEach(student => {
+                            if (yPos > 280) { doc.addPage(); yPos = 20; }
+                            const stuAtt = filteredAttendance.filter(a => a.studentId === student.id);
+                            const stuPresent = stuAtt.filter(a => a.status === 'present').length;
+                            const stuRate = stuAtt.length > 0 ? (stuPresent / stuAtt.length * 100).toFixed(1) : 'N/A';
+                            doc.text(`${student.fullName} (${student.studentId}): ${stuPresent}/${stuAtt.length} = ${stuRate}%`, 20, yPos);
+                            yPos += 6;
+                        });
+                    }
+
+                } else if (reportType === 'student') {
+                    doc.setFontSize(13);
+                    doc.text(`Students (${filteredStudents.length})`, 20, yPos); yPos += 10;
+                    doc.setFontSize(9);
+                    filteredStudents.forEach(student => {
+                        if (yPos > 270) { doc.addPage(); yPos = 20; }
+                        const cls = classes.find(c => c.id === student.classId);
+                        doc.text(`${student.fullName} | ID: ${student.studentId} | Class: ${cls ? cls.name : '-'} | Status: ${student.status || 'active'}`, 20, yPos);
+                        yPos += 6;
+                    });
+
+                } else if (reportType === 'grades') {
+                    doc.setFontSize(13);
+                    doc.text('Grades Summary', 20, yPos); yPos += 10;
+                    doc.setFontSize(10);
+                    const avgPct = filteredGrades.length > 0 ? (filteredGrades.reduce((s, g) => s + (parseFloat(g.percentage) || 0), 0) / filteredGrades.length).toFixed(1) : 'N/A';
+                    doc.text(`Total Grade Records: ${filteredGrades.length} | Average: ${avgPct}%`, 20, yPos); yPos += 12;
+
+                    doc.setFontSize(9);
+                    filteredGrades.forEach(grade => {
+                        if (yPos > 280) { doc.addPage(); yPos = 20; }
+                        const student = students.find(s => s.id === grade.studentId);
+                        doc.text(`${student ? student.fullName : 'Unknown'}: ${grade.grade} (${grade.percentage}%) - ${formatDate(grade.date)}`, 20, yPos);
+                        yPos += 6;
+                    });
+
+                } else if (reportType === 'behavior') {
+                    doc.setFontSize(13);
+                    doc.text('Behavior Summary', 20, yPos); yPos += 10;
+                    doc.setFontSize(10);
+                    const positive = filteredBehavior.filter(b => b.type === 'positive' || b.type === 'Positive').length;
+                    const negative = filteredBehavior.filter(b => b.type === 'negative' || b.type === 'Negative').length;
+                    doc.text(`Total: ${filteredBehavior.length} | Positive: ${positive} | Negative: ${negative}`, 20, yPos); yPos += 12;
+
+                    doc.setFontSize(9);
+                    filteredBehavior.forEach(record => {
+                        if (yPos > 280) { doc.addPage(); yPos = 20; }
+                        const student = students.find(s => s.id === record.studentId);
+                        doc.text(`${student ? student.fullName : 'Unknown'}: ${record.type} (${record.points || 0} pts) - ${formatDate(record.date)}`, 20, yPos);
+                        yPos += 6;
+                    });
+
+                } else if (reportType === 'class') {
+                    doc.setFontSize(13);
+                    doc.text(`Classes (${classes.length})`, 20, yPos); yPos += 10;
+                    doc.setFontSize(9);
+                    classes.forEach(cls => {
+                        if (yPos > 280) { doc.addPage(); yPos = 20; }
+                        const count = filteredStudents.filter(s => s.classId === cls.id).length;
+                        doc.text(`${cls.name} | Teacher: ${cls.teacher || '-'} | Students: ${count} | Room: ${cls.room || '-'}`, 20, yPos);
+                        yPos += 6;
+                    });
+                }
+
+                // Footer
+                yPos += 15;
+                if (yPos > 280) { doc.addPage(); yPos = 20; }
+                doc.setFontSize(8);
+                doc.text(`Generated: ${new Date().toLocaleString()}`, 20, yPos);
+
                 const fileName = `${reportType}_report_${new Date().toISOString().slice(0,10)}.pdf`;
                 doc.save(fileName);
                 showToast('Custom report generated successfully!');
-                
+
             } catch (error) {
                 showToast('Error generating custom report: ' + error.message, 'error');
             }
@@ -16354,8 +16481,8 @@
                 const created = t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A';
 
                 return `<tr>
-                    <td style="font-weight:600;">${t.name || 'Unknown'}</td>
-                    <td><code style="background:var(--secondary);padding:2px 8px;border-radius:4px;font-size:13px;">${t.slug || ''}</code></td>
+                    <td style="font-weight:600;">${escapeHtml(t.name || 'Unknown')}</td>
+                    <td><code style="background:var(--secondary);padding:2px 8px;border-radius:4px;font-size:13px;">${escapeHtml(t.slug || '')}</code></td>
                     <td>${t.student_count || 0}</td>
                     <td>${t.user_count || 0}</td>
                     <td>${statusBadge}</td>
