@@ -5089,8 +5089,10 @@
             if (!endpoint) return;
 
             try {
-                if (action === 'create' || action === 'update') {
+                if (action === 'create') {
                     await apiPost(endpoint, item);
+                } else if (action === 'update' && item.id) {
+                    await apiPut(endpoint + '/' + item.id, item);
                 } else if (action === 'delete' && item.id) {
                     await apiDelete(endpoint + '/' + item.id);
                 }
@@ -7010,7 +7012,8 @@
                     return;
                 }
 
-                // For arrays of data, sync each item individually via POST
+                // For arrays of data, sync each item individually
+                // Use PUT for existing items (to avoid creating duplicates in D1)
                 if (Array.isArray(data) && config.fields) {
                     // Debounced full sync - only sync the most recent additions
                     clearTimeout(window._syncSaveTimers?.[key]);
@@ -7019,8 +7022,14 @@
                         console.log(`Auto-syncing ${data.length} ${config.type} to database...`);
                         for (const item of data) {
                             if (item.id) {
-                                await apiPost(config.endpoint, config.fields(item))
-                                    .catch(e => console.warn(`${config.type} sync failed:`, e));
+                                // Use PUT to update existing items by ID (avoids duplicates)
+                                await apiPut(config.endpoint + '/' + item.id, config.fields(item))
+                                    .catch(async (e) => {
+                                        // If PUT fails (item not in D1 yet), try POST to create it
+                                        console.warn(`${config.type} PUT failed, trying POST:`, e.message);
+                                        await apiPost(config.endpoint, config.fields(item))
+                                            .catch(e2 => console.warn(`${config.type} POST also failed:`, e2.message));
+                                    });
                             }
                         }
                     }, 2000); // 2-second debounce to avoid overwhelming the API on rapid saves
@@ -8451,6 +8460,15 @@
             setTimeout(() => {
                 populateClassDropdowns();
                 populateAcademicYearDropdowns();
+                // Reset the form fields
+                const form = document.getElementById('studentForm');
+                if (form) form.reset();
+                // Clear photo preview
+                const photoPreview = document.getElementById('photoPreview');
+                if (photoPreview) {
+                    photoPreview.classList.add('hidden');
+                    photoPreview.src = '';
+                }
             }, 100);
             
             showModal('addStudentModal');
@@ -8536,19 +8554,31 @@
                 email: email,
                 address: address,
                 notes: notes,
-                photo: document.getElementById('photoPreview')?.src || null,
+                photo: (function() {
+                    const preview = document.getElementById('photoPreview');
+                    // Only use photo if preview is visible and src is a data URL (actual photo)
+                    if (preview && !preview.classList.contains('hidden') && preview.src && preview.src.startsWith('data:')) {
+                        return preview.src;
+                    }
+                    return editingId ? (students.find(s => s.id === editingId)?.photo || null) : null;
+                })(),
                 createdAt: editingId ? students.find(s => s.id === editingId)?.createdAt || new Date().toISOString() : new Date().toISOString()
             };
             
             if (editingId) {
                 const index = students.findIndex(s => s.id === editingId);
-                students[index] = student;
+                if (index >= 0) students[index] = student;
+                else students.push(student);
             } else {
                 students.push(student);
             }
             
+            // Save editingId before closing modal (which removes it from DOM)
+            const wasEditing = !!editingId;
+            
             saveToStorage(STORAGE_KEYS.STUDENTS, students);
             closeModal('addStudentModal');
+            editingId = null; // Reset editing state after save
             loadStudents();
             
             // Refresh student-related dropdowns
@@ -8566,9 +8596,9 @@
                 guardian_phone: student.guardianPhone || '',
                 student_id: student.studentId || '',
                 address: student.address || ''
-            }, editingId ? 'update' : 'create');
+            }, wasEditing ? 'update' : 'create');
             
-            showToast(editingId ? 'Student updated successfully' : 'Student added successfully');
+            showToast(wasEditing ? 'Student updated successfully' : 'Student added successfully');
         }
 
         function editStudent(id) {
@@ -9466,13 +9496,17 @@
             
             if (editingId) {
                 const index = classes.findIndex(c => c.id === editingId);
-                classes[index] = cls;
+                if (index >= 0) classes[index] = cls;
+                else classes.push(cls);
             } else {
                 classes.push(cls);
             }
             
+            const wasEditing = !!editingId;
+            
             saveToStorage(STORAGE_KEYS.CLASSES, classes);
             closeModal('addClassModal');
+            editingId = null;
             loadClasses();
             
             // Refresh all dropdowns to show new data immediately
@@ -9484,9 +9518,9 @@
                 level: '', department: cls.description || '',
                 academic_year: '', capacity: 30,
                 teacher_id: cls.teacher || ''
-            }, editingId ? 'update' : 'create');
+            }, wasEditing ? 'update' : 'create');
             
-            showToast(editingId ? 'Class updated successfully' : 'Class added successfully');
+            showToast(wasEditing ? 'Class updated successfully' : 'Class added successfully');
         }
 
         function editClass(id) {
