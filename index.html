@@ -3887,6 +3887,9 @@
                             <button class="btn btn-primary" onclick="batchAssignClass()" id="batchAssignBtn" disabled>
                                 🏷️ <span data-translate="assign_to_class">Assign to Class</span>
                             </button>
+                            <button class="btn btn-danger" onclick="batchDeleteStudents()" id="batchDeleteBtn" disabled>
+                                🗑️ <span data-translate="delete_selected">Delete Selected</span>
+                            </button>
                             <button class="btn btn-secondary" onclick="exitBatchSelectMode()">
                                 ✕ <span data-translate="cancel">Cancel</span>
                             </button>
@@ -14201,6 +14204,7 @@
             const count = selectedStudentIds.size;
             const countEl = document.getElementById('selectedStudentCount');
             const assignBtn = document.getElementById('batchAssignBtn');
+            const deleteBtn = document.getElementById('batchDeleteBtn');
             const classSelect = document.getElementById('batchClassSelect');
             if (countEl) {
                 countEl.textContent = count > 0 ? `${count} ${translate('students_selected') || 'student(s) selected'}` : '';
@@ -14209,6 +14213,10 @@
             const hasClass = classSelect && classSelect.value !== '';
             if (assignBtn) {
                 assignBtn.disabled = !(count > 0 && hasClass);
+            }
+            // Enable delete button when students are selected
+            if (deleteBtn) {
+                deleteBtn.disabled = !(count > 0);
             }
             // Listen for class selection changes
             if (classSelect && !classSelect._listenerAdded) {
@@ -14249,6 +14257,45 @@
             }
 
             showToast(`✅ ${updatedCount} ${translate('students_assigned_to') || 'student(s) assigned to'} ${className}`);
+            exitBatchSelectMode();
+            loadStudents();
+        }
+
+        async function batchDeleteStudents() {
+            if (selectedStudentIds.size === 0) {
+                showToast(translate('select_students_first') || 'Please select students to delete', 'error');
+                return;
+            }
+
+            const count = selectedStudentIds.size;
+            const confirmed = await showConfirm({
+                title: translate('confirm_batch_delete') || 'Delete Selected Students?',
+                message: `${count} ${translate('students_will_be_deleted') || 'student(s) will be permanently deleted along with all their attendance records.'} ${translate('this_action_cannot_be_undone') || 'This action cannot be undone.'}`,
+                icon: '🗑️',
+                okText: translate('delete') || 'Delete',
+                okClass: 'btn-danger'
+            });
+            if (!confirmed) return;
+
+            let deletedCount = 0;
+            const students = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
+            const attendance = loadFromStorage(STORAGE_KEYS.ATTENDANCE) || [];
+            const idsToDelete = Array.from(selectedStudentIds);
+
+            // Remove students and their attendance from localStorage
+            const remainingStudents = students.filter(s => !selectedStudentIds.has(s.id));
+            const remainingAttendance = attendance.filter(a => !selectedStudentIds.has(a.studentId));
+            deletedCount = students.length - remainingStudents.length;
+
+            saveToStorage(STORAGE_KEYS.STUDENTS, remainingStudents);
+            saveToStorage(STORAGE_KEYS.ATTENDANCE, remainingAttendance);
+
+            // Sync deletions to D1 database
+            for (const id of idsToDelete) {
+                syncItemToApi('student', { id }, 'delete');
+            }
+
+            showToast(`🗑️ ${deletedCount} ${translate('students_deleted') || 'student(s) deleted successfully'}`);
             exitBatchSelectMode();
             loadStudents();
         }
