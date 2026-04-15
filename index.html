@@ -5217,6 +5217,7 @@
         }
 
         // Normalize API data from snake_case to camelCase that the frontend expects
+        // IMPORTANT: Must include ALL fields that the frontend uses to prevent 'undefined' display
         function normalizeStudent(apiStudent) {
             if (!apiStudent) return null;
             // Build fullName: prefer fullName field, then first_name (which stores the full name in our system), then combine first+last
@@ -5226,18 +5227,21 @@
             }
             if (!fullName) fullName = apiStudent.email || 'Unknown';
             return {
-                id: apiStudent.id,
+                id: apiStudent.id || '',
                 fullName: fullName,
                 studentId: apiStudent.studentId || apiStudent.student_id || (apiStudent.id ? apiStudent.id.substring(0, 8).toUpperCase() : ''),
                 classId: apiStudent.classId || apiStudent.class || '',
+                className: apiStudent.className || apiStudent.class || '',
                 academicYear: apiStudent.academicYear || apiStudent.academic_year || '',
                 status: apiStudent.status || 'active',
                 guardianName: apiStudent.guardianName || apiStudent.guardian_name || '',
-                guardianPhone: apiStudent.guardianPhone || apiStudent.guardian_phone || apiStudent.phone || '',
+                guardianPhone: apiStudent.guardianPhone || apiStudent.guardian_phone || '',
+                phone: apiStudent.phone || '',
                 email: apiStudent.email || '',
                 address: apiStudent.address || '',
                 notes: apiStudent.notes || '',
                 photo: apiStudent.photo || null,
+                group: apiStudent.group || apiStudent.group_name || '',
                 createdAt: apiStudent.createdAt || apiStudent.created_at || apiStudent.enrollment_date || new Date().toISOString()
             };
         }
@@ -5310,7 +5314,8 @@
             return apiList.map(item => normalizer(item)).filter(item => item !== null);
         }
 
-        // Smart merge: combine local and API data, preferring the more complete dataset
+        // Smart merge: combine local and API data with FIELD-LEVEL merging
+        // This prevents "undefined" by merging individual fields rather than replacing whole objects
         function smartMergeData(localData, apiData, idField = 'id') {
             if (!Array.isArray(apiData) || apiData.length === 0) {
                 // API returned empty - keep local data, don't wipe it
@@ -5320,9 +5325,7 @@
                 // No local data - use API data
                 return apiData;
             }
-            // Both have data - merge by ID
-            // For matching IDs: prefer the record with more complete data
-            // (API data can be corrupted with empty fields from old buggy syncs)
+            // Both have data - merge by ID with field-level resolution
             const result = [];
             const apiMap = new Map(apiData.map(item => [item[idField], item]));
             const localMap = new Map(localData.map(item => [item[idField], item]));
@@ -5333,18 +5336,25 @@
                 const localItem = localMap.get(id);
                 
                 if (apiItem && localItem) {
-                    // Both exist - prefer the one with more meaningful data
-                    // For students, prefer the one that has a non-empty fullName
-                    const apiHasName = (apiItem.fullName || apiItem.first_name || '').trim() !== '';
-                    const localHasName = (localItem.fullName || localItem.first_name || '').trim() !== '';
-                    
-                    if (localHasName && !apiHasName) {
-                        // Local has data, API is empty/corrupted - use local
-                        result.push(localItem);
-                    } else {
-                        // API is fine or both are fine - use API (source of truth)
-                        result.push(apiItem);
+                    // Both exist - do field-level merge
+                    // For each field: prefer the non-empty value (local or API)
+                    // This prevents losing data when API has null but local has a value
+                    const merged = {};
+                    const allKeys = new Set([...Object.keys(apiItem), ...Object.keys(localItem)]);
+                    for (const key of allKeys) {
+                        const apiVal = apiItem[key];
+                        const localVal = localItem[key];
+                        // Prefer non-null, non-empty, non-undefined value
+                        if (apiVal === undefined || apiVal === null || apiVal === '') {
+                            merged[key] = (localVal !== undefined) ? localVal : '';
+                        } else if (localVal === undefined || localVal === null || localVal === '') {
+                            merged[key] = apiVal;
+                        } else {
+                            // Both have values - prefer API as source of truth
+                            merged[key] = apiVal;
+                        }
                     }
+                    result.push(merged);
                 } else if (apiItem) {
                     result.push(apiItem);
                 } else {
@@ -14084,8 +14094,8 @@
                                 '<div style="width: 40px; height: 40px; background: var(--secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">👤</div>'
                             }
                         </td>
-                        <td><strong>${student.fullName}</strong></td>
-                        <td>${student.studentId}</td>
+                        <td><strong>${student.fullName || 'Unknown'}</strong></td>
+                        <td>${student.studentId || '-'}</td>
                         <td>${studentClass ? studentClass.name : '<span style="color:var(--text-light);font-style:italic;">Unassigned</span>'}</td>
                         <td>${student.academicYear || '-'}</td>
                         <td><span class="badge badge-${statusColors[student.status || 'active']}">${translate(student.status || 'active')}</span></td>
