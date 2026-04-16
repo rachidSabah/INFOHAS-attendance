@@ -8136,6 +8136,7 @@
 
         // Keyboard shortcut for global search (Ctrl+K)
         document.addEventListener('keydown', function(e) {
+            if (!e.key) return;
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 openGlobalSearch();
@@ -16337,6 +16338,8 @@
         }
 
         document.addEventListener('keydown', function(e) {
+            // Guard: some events may not have e.key (e.g. IME composition events)
+            if (!e.key) return;
             // Escape key - close any open modal or overlay
             if (e.key === 'Escape') {
                 if (shortcutsOverlayOpen) {
