@@ -17427,7 +17427,7 @@
                 const healthResult = await apiGet('/health');
                 const apiLatency = Date.now() - startTime;
 
-                if (healthResult && healthResult.success) {
+                if (healthResult && (healthResult.success || healthResult.status === 'ok')) {
                     document.getElementById('saHealthApiIcon').textContent = '✅';
                     document.getElementById('saHealthApiStatus').textContent = 'Operational';
                     document.getElementById('saHealthApiStatus').style.color = '#10b981';
