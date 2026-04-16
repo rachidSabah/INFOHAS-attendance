@@ -5346,7 +5346,7 @@
                 return data;
             } catch (e) {
                 console.warn('API GET failed for', endpoint, ':', e.message);
-                return null;
+                return { success: false, error: e.message };
             }
         }
 
@@ -5360,7 +5360,7 @@
                 return data;
             } catch (e) {
                 console.warn('API POST failed for', endpoint, ':', e.message);
-                return null;
+                return { success: false, error: e.message };
             }
         }
 
@@ -5374,7 +5374,7 @@
                 return data;
             } catch (e) {
                 console.warn('API PUT failed for', endpoint, ':', e.message);
-                return null;
+                return { success: false, error: e.message };
             }
         }
 
@@ -5388,7 +5388,7 @@
                 return data;
             } catch (e) {
                 console.warn('API DELETE failed for', endpoint, ':', e.message);
-                return null;
+                return { success: false, error: e.message };
             }
         }
 
@@ -16722,21 +16722,21 @@
                             </div>
                         `;
                     }
-                } else if (statsResult === null) {
+                } else if (!statsResult || !statsResult.success) {
                     // Auth failure or network error
                     const statsEl = document.getElementById('saPlatformStats');
-                    if (statsEl) statsEl.innerHTML = '<p style="color:#ef4444;text-align:center;padding:20px;">⚠️ Unable to load statistics. Your session may have expired. Please log out and log back in.</p>';
+                    if (statsEl) statsEl.innerHTML = '<p style="color:#ef4444;text-align:center;padding:20px;">⚠️ Unable to load statistics. ' + (statsResult?.error || 'Your session may have expired. Please log out and log back in.') + '</p>';
                 }
 
                 const tenantsResult = await apiGet('/saas/tenants');
                 if (tenantsResult && tenantsResult.success && tenantsResult.data) {
                     saTenantsCache = tenantsResult.data;
                     renderSuperAdminTenants(saTenantsCache);
-                } else if (tenantsResult === null) {
+                } else if (!tenantsResult || !tenantsResult.success) {
                     // Auth failure or network error
                     const tbody = document.getElementById('saTenantsTableBody');
                     if (tbody && saTenantsCache.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:30px;"><div style="font-size:32px;margin-bottom:10px;">⚠️</div><p style="font-weight:600;">Unable to Load Schools</p><p style="font-size:13px;margin-top:4px;">Your session may have expired. Please <a href="#" onclick="logout();return false;" style="color:#3b82f6;text-decoration:underline;">log out and log back in</a>.</p></td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:30px;"><div style="font-size:32px;margin-bottom:10px;">⚠️</div><p style="font-weight:600;">Unable to Load Schools</p><p style="font-size:13px;margin-top:4px;">' + (tenantsResult?.error || 'Your session may have expired. Please') + ' <a href="#" onclick="logout();return false;" style="color:#3b82f6;text-decoration:underline;">log out and log back in</a>.</p></td></tr>';
                     }
                 }
             } catch (e) {
@@ -17467,7 +17467,7 @@
                     document.getElementById('saHealthApiStatus').textContent = 'Operational';
                     document.getElementById('saHealthApiStatus').style.color = '#10b981';
                     document.getElementById('saHealthApiDetail').textContent = `Response time: ${apiLatency}ms | Version: ${healthResult.version || 'N/A'}`;
-                } else if (healthResult === null) {
+                } else if (!healthResult || !healthResult.success) {
                     document.getElementById('saHealthApiIcon').textContent = '❌';
                     document.getElementById('saHealthApiStatus').textContent = 'Unreachable';
                     document.getElementById('saHealthApiStatus').style.color = '#ef4444';
