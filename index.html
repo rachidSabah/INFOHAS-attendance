@@ -5650,6 +5650,7 @@
             const result = [];
             const apiMap = new Map(apiData.map(item => [item[idField], item]));
             const localMap = new Map(localData.map(item => [item[idField], item]));
+            const localIds = new Set(localMap.keys());
             const allIds = new Set([...apiMap.keys(), ...localMap.keys()]);
             
             for (const id of allIds) {
@@ -5677,7 +5678,12 @@
                     }
                     result.push(merged);
                 } else if (apiItem) {
-                    result.push(apiItem);
+                    // API has item but local doesn't — check if it was locally deleted
+                    const deletedIds = JSON.parse(localStorage.getItem('attendance_deleted_ids') || '[]');
+                    if (!deletedIds.includes(id)) {
+                        result.push(apiItem);
+                    }
+                    // If deleted, skip it — it was intentionally removed locally
                 } else {
                     result.push(localItem);
                 }
@@ -5817,6 +5823,22 @@
                 if (localDataPushed) {
                     console.log('Local data pushed to database successfully!');
                 }
+
+                // Sync locally-deleted items to API so they stay deleted after logout
+                try {
+                    const deletedIds = JSON.parse(localStorage.getItem('attendance_deleted_ids') || '[]');
+                    if (deletedIds.length > 0 && apiToken) {
+                        console.log('Syncing ' + deletedIds.length + ' deleted items to API...');
+                        for (const delId of deletedIds) {
+                            await apiDelete('/students/' + delId).catch(() => {});
+                        }
+                        // Clear the deleted-ids list after successful sync
+                        localStorage.setItem('attendance_deleted_ids', '[]');
+                    }
+                } catch (e) {
+                    console.warn('Deleted IDs sync failed:', e.message);
+                }
+
                 console.log('Database load complete (smart merge)!');
                 return true;
             } catch (e) {
@@ -9236,17 +9258,28 @@
             const deletedAttendance = attendance.filter(a => a.studentId === id);
             const deletedIncidents = incidents.filter(i => i.studentId === id);
 
-            // Delete
+            // Track deleted ID so loadFromDatabase won't re-add it from API
+            const deletedIdsKey = 'attendance_deleted_ids';
+            const deletedIds = JSON.parse(localStorage.getItem(deletedIdsKey) || '[]');
+            if (!deletedIds.includes(id)) {
+                deletedIds.push(id);
+                localStorage.setItem(deletedIdsKey, JSON.stringify(deletedIds));
+            }
+            // Delete locally
             saveToStorage(STORAGE_KEYS.STUDENTS, students.filter(s => s.id !== id));
-            saveToStorage(STORAGE_KEYS.ATTENDANCE, attendance.filter(a => a.studentId !== id));
-            saveToStorage(STORAGE_KEYS.INCIDENTS, incidents.filter(i => i.studentId !== id));
-            // Sync delete to D1 database
+            saveToStorage(STORAGE_KEYS.ATTENDANCE, attendance.filter(a => a.studentId === id));
+            saveToStorage(STORAGE_KEYS.INCIDENTS, incidents.filter(i => i.studentId === id));
+            // Sync delete to API database
             syncItemToApi('student', { id }, 'delete');
             showToast(translate('student_deleted') || 'Student deleted');
             loadStudents();
 
             // Offer undo
             showUndoToast(translate('student_deleted') || 'Student deleted — Undo?', () => {
+                // Remove from deleted-ids tracking so merge won't skip it
+                const delIds = JSON.parse(localStorage.getItem('attendance_deleted_ids') || '[]');
+                const filtered = delIds.filter(did => did !== id);
+                localStorage.setItem('attendance_deleted_ids', JSON.stringify(filtered));
                 // Restore
                 const currentStudents = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
                 currentStudents.push(deletedStudent);
