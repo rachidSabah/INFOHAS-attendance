@@ -17390,7 +17390,7 @@
                 action: action,
                 details: details,
                 timestamp: new Date().toISOString(),
-                user: auth?.username || 'Super Admin'
+                user: currentUser?.username || 'Super Admin'
             };
             saActivityLog.unshift(entry);
             // Keep only last 200 entries
