@@ -5234,11 +5234,11 @@
                 </div>
 
                 <!-- Bulk Notification Modal -->
-                <div id="saBulkNotificationModal" class="modal hidden">
+                <div id="saBulkNotificationModal" class="modal">
                     <div class="modal-content" style="max-width:550px;">
                         <div class="modal-header">
                             <h2>📢 Send Notification to All Schools</h2>
-                            <button class="modal-close" onclick="document.getElementById('saBulkNotificationModal').classList.add('hidden')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saBulkNotificationModal').classList.remove('active')">&times;</button>
                         </div>
                         <form onsubmit="handleBulkNotification(event)" style="padding:20px;">
                             <div class="form-group">
@@ -5265,7 +5265,7 @@
                                 </label>
                             </div>
                             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                                <button type="button" class="btn" onclick="document.getElementById('saBulkNotificationModal').classList.add('hidden')">Cancel</button>
+                                <button type="button" class="btn" onclick="document.getElementById('saBulkNotificationModal').classList.remove('active')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">📢 Send to All Schools</button>
                             </div>
                         </form>
@@ -5273,11 +5273,11 @@
                 </div>
 
                 <!-- School Detail Modal -->
-                <div id="saTenantDetailModal" class="modal hidden">
+                <div id="saTenantDetailModal" class="modal">
                     <div class="modal-content" style="max-width:600px;">
                         <div class="modal-header">
                             <h2 id="saTenantDetailTitle">School Details</h2>
-                            <button class="modal-close" onclick="document.getElementById('saTenantDetailModal').classList.add('hidden')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saTenantDetailModal').classList.remove('active')">&times;</button>
                         </div>
                         <div id="saTenantDetailBody" style="padding:20px;">
                         </div>
@@ -5285,11 +5285,11 @@
                 </div>
 
                 <!-- Create School Modal -->
-                <div id="saCreateSchoolModal" class="modal hidden">
+                <div id="saCreateSchoolModal" class="modal">
                     <div class="modal-content" style="max-width:600px;">
                         <div class="modal-header">
                             <h2>➕ Create New School</h2>
-                            <button class="modal-close" onclick="document.getElementById('saCreateSchoolModal').classList.add('hidden')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saCreateSchoolModal').classList.remove('active')">&times;</button>
                         </div>
                         <form id="saCreateSchoolForm" onsubmit="handleCreateSchool(event)" style="padding:20px;">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -5348,7 +5348,7 @@
                                 </div>
                             </div>
                             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                                <button type="button" class="btn" onclick="document.getElementById('saCreateSchoolModal').classList.add('hidden')">Cancel</button>
+                                <button type="button" class="btn" onclick="document.getElementById('saCreateSchoolModal').classList.remove('active')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">
                                     <span id="saCreateSpinner" class="spinner hidden"></span>
                                     Create School
@@ -5359,11 +5359,11 @@
                 </div>
 
                 <!-- Edit School Modal -->
-                <div id="saEditTenantModal" class="modal hidden">
+                <div id="saEditTenantModal" class="modal">
                     <div class="modal-content" style="max-width:600px;">
                         <div class="modal-header">
                             <h2>Edit School</h2>
-                            <button class="modal-close" onclick="document.getElementById('saEditTenantModal').classList.add('hidden')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saEditTenantModal').classList.remove('active')">&times;</button>
                         </div>
                         <form id="saEditTenantForm" onsubmit="handleEditTenant(event)" style="padding:20px;">
                             <input type="hidden" id="saEditTenantId">
@@ -5430,7 +5430,7 @@
                                 </div>
                             </div>
                             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                                <button type="button" class="btn" onclick="document.getElementById('saEditTenantModal').classList.add('hidden')">Cancel</button>
+                                <button type="button" class="btn" onclick="document.getElementById('saEditTenantModal').classList.remove('active')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
                         </form>
@@ -5438,11 +5438,11 @@
                 </div>
 
                 <!-- Delete School Confirmation Modal -->
-                <div id="saDeleteTenantModal" class="modal hidden">
+                <div id="saDeleteTenantModal" class="modal">
                     <div class="modal-content" style="max-width:500px;">
                         <div class="modal-header">
                             <h2 style="color:#ef4444;">⚠️ Delete School</h2>
-                            <button class="modal-close" onclick="document.getElementById('saDeleteTenantModal').classList.add('hidden')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saDeleteTenantModal').classList.remove('active')">&times;</button>
                         </div>
                         <div style="padding:20px;">
                             <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:16px;margin-bottom:16px;">
@@ -5454,7 +5454,7 @@
                             <input type="text" id="saDeleteConfirmInput" class="form-input" placeholder="Type school name here..." style="margin-bottom:16px;" oninput="validateDeleteConfirm()">
                             <input type="hidden" id="saDeleteTenantId">
                             <div style="display:flex;gap:10px;justify-content:flex-end;">
-                                <button class="btn" onclick="document.getElementById('saDeleteTenantModal').classList.add('hidden')">Cancel</button>
+                                <button class="btn" onclick="document.getElementById('saDeleteTenantModal').classList.remove('active')">Cancel</button>
                                 <button class="btn" style="background:#ef4444;color:white;opacity:0.5;cursor:not-allowed;" id="saDeleteConfirmBtn" onclick="confirmDeleteTenant()" disabled>Delete Permanently</button>
                             </div>
                         </div>
@@ -9095,14 +9095,18 @@
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
-                // Check if modal uses 'hidden' class (static modals like studentProfileModal)
-                if (modal.classList.contains('hidden') || modalId === 'studentProfileModal') {
-                    modal.classList.add('hidden');
-                } else if (modal.classList.contains('active')) {
+                // Prefer 'active' class pattern (used by showModal and Super Admin modals)
+                if (modal.classList.contains('active')) {
                     modal.classList.remove('active');
-                } else {
-                    // For dynamically created modals without active/hidden, remove them entirely
+                } else if (modal.classList.contains('hidden')) {
+                    // Legacy hidden class pattern
+                    modal.classList.add('hidden');
+                } else if (!modalId.endsWith('Modal')) {
+                    // For dynamically created non-modal elements, remove them entirely
                     modal.remove();
+                } else {
+                    // Modal with no active/hidden - ensure it's hidden via base CSS
+                    modal.classList.remove('active');
                 }
             }
             editingId = null;
@@ -17198,7 +17202,7 @@
                         <button class="btn" style="background:#ef4444;color:white;" onclick="resetTenantData('${t.id}', '${t.name}')">⚠️ Reset Data</button>
                     </div>
                 `;
-                modal.classList.remove('hidden');
+                modal.classList.add('active');
             } catch (e) {
                 showToast('Error loading tenant: ' + e.message, 'error');
             }
@@ -17286,7 +17290,7 @@
             document.getElementById('saDeleteConfirmBtn').disabled = true;
             document.getElementById('saDeleteConfirmBtn').style.opacity = '0.5';
             document.getElementById('saDeleteConfirmBtn').style.cursor = 'not-allowed';
-            document.getElementById('saDeleteTenantModal').classList.remove('hidden');
+            document.getElementById('saDeleteTenantModal').classList.add('active');
         }
 
         function validateDeleteConfirm() {
@@ -17312,7 +17316,7 @@
                 if (result && result.success) {
                     showToast('School deleted permanently');
                     logSuperAdminActivity('data', 'School Deleted', 'Permanently deleted school: ' + id);
-                    document.getElementById('saDeleteTenantModal').classList.add('hidden');
+                    document.getElementById('saDeleteTenantModal').classList.remove('active');
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to delete: ' + (result?.error || 'Unknown error'), 'error');
@@ -17340,7 +17344,7 @@
                 document.getElementById('saEditMaxStudents').value = t.max_students || 100;
                 document.getElementById('saEditMaxUsers').value = t.max_users || 5;
                 document.getElementById('saEditLogoUrl').value = t.logo_url || '';
-                document.getElementById('saEditTenantModal').classList.remove('hidden');
+                document.getElementById('saEditTenantModal').classList.add('active');
             } catch (e) {
                 showToast('Error loading school: ' + e.message, 'error');
             }
@@ -17365,7 +17369,7 @@
                 if (result && result.success) {
                     showToast('School updated successfully');
                     logSuperAdminActivity('data', 'School Modified', 'Updated school: ' + id + ' (' + data.name + ')');
-                    document.getElementById('saEditTenantModal').classList.add('hidden');
+                    document.getElementById('saEditTenantModal').classList.remove('active');
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to update: ' + (result?.error || 'Unknown error'), 'error');
@@ -17496,7 +17500,7 @@
             document.getElementById('saCreateMaxStudents').value = '100';
             document.getElementById('saCreateMaxUsers').value = '5';
             document.getElementById('saCreatePrimaryColor').value = '#6366f1';
-            document.getElementById('saCreateSchoolModal').classList.remove('hidden');
+            document.getElementById('saCreateSchoolModal').classList.add('active');
         }
 
         async function handleCreateSchool(event) {
@@ -17541,7 +17545,7 @@
                 if (result && result.success) {
                     showToast('School "' + name + '" created successfully!');
                     logSuperAdminActivity('data', 'School Created', 'Created new school: ' + name + ' (' + slug + ')');
-                    document.getElementById('saCreateSchoolModal').classList.add('hidden');
+                    document.getElementById('saCreateSchoolModal').classList.remove('active');
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to create school: ' + (result?.error || 'Unknown error'), 'error');
@@ -17555,7 +17559,7 @@
 
         // ==================== BULK NOTIFICATION ====================
         function showBulkNotificationModal() {
-            document.getElementById('saBulkNotificationModal').classList.remove('hidden');
+            document.getElementById('saBulkNotificationModal').classList.add('active');
         }
 
         async function handleBulkNotification(event) {
@@ -17594,7 +17598,7 @@
 
                 showToast('Notification sent to ' + sentCount + ' school(s)!');
                 logSuperAdminActivity('system', 'Bulk Notification Sent', '"' + title + '" sent to ' + sentCount + ' schools');
-                document.getElementById('saBulkNotificationModal').classList.add('hidden');
+                document.getElementById('saBulkNotificationModal').classList.remove('active');
                 document.getElementById('saBulkNotifTitle').value = '';
                 document.getElementById('saBulkNotifMessage').value = '';
             } catch (e) {
@@ -17922,7 +17926,7 @@
 
         // ==================== BULK NOTIFICATIONS ====================
         function showBulkNotificationModal() {
-            document.getElementById('saBulkNotificationModal').classList.remove('hidden');
+            document.getElementById('saBulkNotificationModal').classList.add('active');
         }
 
         async function handleBulkNotification(event) {
@@ -17974,7 +17978,7 @@
                 // Log activity
                 logSuperAdminActivity('system', 'Bulk Notification Sent', `"${title}" sent to ${sentCount} school(s)`);
 
-                document.getElementById('saBulkNotificationModal').classList.add('hidden');
+                document.getElementById('saBulkNotificationModal').classList.remove('active');
                 document.getElementById('saBulkNotifTitle').value = '';
                 document.getElementById('saBulkNotifMessage').value = '';
                 document.getElementById('saBulkNotifUrgent').checked = false;
