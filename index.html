@@ -17154,24 +17154,28 @@
 
             spinner.classList.remove('hidden');
             try {
-                // Use the registration endpoint to create a new school
-                const result = await apiPost('/register', {
+                // Use the schools endpoint to create a new school
+                const result = await apiPost('/schools', {
                     name: name,
-                    slug: slug,
-                    admin_name: adminName,
-                    admin_email: adminEmail,
-                    password: password,
-                    country: country,
-                    language: language,
-                    max_students: maxStudents,
-                    max_users: maxUsers,
-                    primary_color: primaryColor
+                    address: null,
+                    phone: null,
+                    email: adminEmail,
+                    admin_username: adminName,
+                    admin_password: password,
+                    logo: null,
+                    is_active: 1
                 });
 
                 if (result && result.success) {
                     showToast('School "' + name + '" created successfully!');
-                    logSuperAdminActivity('data', 'School Created', 'Created new school: ' + name + ' (' + slug + ')');
+                    logSuperAdminActivity('data', 'School Created', 'Created new school: ' + name);
                     document.getElementById('saCreateSchoolModal').classList.add('hidden');
+                    document.getElementById('saCreateSchoolForm').reset();
+                    document.getElementById('saCreateCountry').value = 'MA';
+                    document.getElementById('saCreateLanguage').value = 'fr';
+                    document.getElementById('saCreateMaxStudents').value = '100';
+                    document.getElementById('saCreateMaxUsers').value = '5';
+                    document.getElementById('saCreatePrimaryColor').value = '#6366f1';
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to create school: ' + (result?.error || 'Unknown error'), 'error');
