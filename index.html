@@ -3579,6 +3579,28 @@
         }
         .sync-status-dot.offline { background: var(--danger); }
         .sync-status-dot.syncing { background: var(--warning); animation: offlinePulse 1s ease-in-out infinite; }
+
+        /* Modal Close Button */
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 0;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            background: var(--danger);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -7593,6 +7615,42 @@
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('registrationScreen').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
+            // Load available schools for the dropdown
+            loadLoginSchools();
+        }
+
+        // Load schools for login dropdown
+        async function loadLoginSchools() {
+            const schoolGroup = document.getElementById('loginSchoolGroup');
+            const schoolSelect = document.getElementById('loginSlug');
+            if (!schoolGroup || !schoolSelect) return;
+
+            try {
+                // Try to fetch schools from API
+                const result = await apiGet('/saas/tenants');
+                if (result && result.success && result.data && result.data.length > 0) {
+                    // Clear existing options except the first one
+                    while (schoolSelect.options.length > 1) {
+                        schoolSelect.remove(1);
+                    }
+                    // Add schools to dropdown
+                    result.data.forEach(school => {
+                        const option = document.createElement('option');
+                        option.value = school.slug || school.id;
+                        option.textContent = school.name || 'Unknown School';
+                        schoolSelect.appendChild(option);
+                    });
+                    // Show the school dropdown
+                    schoolGroup.style.display = 'block';
+                } else {
+                    // Hide school dropdown if no schools available
+                    schoolGroup.style.display = 'none';
+                }
+            } catch (e) {
+                // If API fails, hide the school dropdown
+                console.log('Could not load schools for login:', e.message);
+                schoolGroup.style.display = 'none';
+            }
         }
 
         function showRegistrationScreen() {
@@ -16956,21 +17014,46 @@
         let saTenantsCache = [];
 
         function showSuperAdminTab(tabName) {
-            document.querySelectorAll('#superadminPage .tab-content').forEach(tc => { tc.style.display = 'none'; tc.classList.remove('active'); });
+            // Hide all tab contents and remove active class
+            document.querySelectorAll('#superadminPage .tab-content').forEach(tc => {
+                tc.style.display = 'none';
+                tc.classList.remove('active');
+            });
+            // Remove active class from all tabs
             document.querySelectorAll('#superadminPage .tab').forEach(t => t.classList.remove('active'));
-            const targetTab = document.getElementById('sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab');
-            if (targetTab) { targetTab.style.display = 'block'; targetTab.classList.add('active'); }
-            document.querySelector(`[onclick="showSuperAdminTab('${tabName}')"]`)?.classList.add('active');
-            if (tabName === 'tenants' || tabName === 'overview') {
-                loadSuperAdminData();
-            } else if (tabName === 'statistics') {
-                loadSuperAdminStatistics();
-            } else if (tabName === 'settings') {
-                loadSuperAdminSettings();
-            } else if (tabName === 'activity') {
-                loadSuperAdminActivity();
-            } else if (tabName === 'health') {
-                loadSuperAdminHealth();
+
+            // Show target tab content
+            const targetTabId = 'sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab';
+            const targetTab = document.getElementById(targetTabId);
+            if (targetTab) {
+                targetTab.style.display = 'block';
+                targetTab.classList.add('active');
+            }
+
+            // Activate the tab button
+            const tabButton = document.querySelector(`#superadminPage .tab[onclick="showSuperAdminTab('${tabName}')"]`);
+            if (tabButton) {
+                tabButton.classList.add('active');
+            }
+
+            // Load data based on tab
+            switch(tabName) {
+                case 'overview':
+                case 'tenants':
+                    loadSuperAdminData();
+                    break;
+                case 'statistics':
+                    loadSuperAdminStatistics();
+                    break;
+                case 'settings':
+                    loadSuperAdminSettings();
+                    break;
+                case 'activity':
+                    loadSuperAdminActivity();
+                    break;
+                case 'health':
+                    loadSuperAdminHealth();
+                    break;
             }
         }
 
