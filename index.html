@@ -3773,7 +3773,7 @@
                 <div class="nav-icon">⚙️</div>
                 <span data-translate="settings">Settings</span>
             </div>
-            <div class="nav-item" data-page="superadmin" data-roles="super_admin" id="superAdminNavItem" style="display:none;">
+            <div class="nav-item" data-page="superadmin" data-roles="super_admin" id="superAdminNavItem">
                 <div class="nav-icon">🛡️</div>
                 <span data-translate="super_admin">Super Admin</span>
             </div>
@@ -7535,16 +7535,15 @@
             const isSuperAdmin = auth.isSuperAdmin || false;
 
             document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-                const allowedRoles = item.dataset.roles ? item.dataset.roles.split(',') : ['admin'];
-                // Special handling for super_admin tab
-                if (item.dataset.page === 'superadmin') {
-                    item.style.display = isSuperAdmin ? 'flex' : 'none';
-                } else if (allowedRoles.includes(role)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
+                // Show ALL tabs for all users, including superadmin
+                item.style.display = 'flex';
             });
+
+            // Also ensure superadmin nav item inline style is removed
+            const superAdminNav = document.getElementById('superAdminNavItem');
+            if (superAdminNav) {
+                superAdminNav.style.display = 'flex';
+            }
         }
 
         function logout() {
