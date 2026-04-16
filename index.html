@@ -1,315 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script type="text/javascript">
-  // This is a CodeSandbox injection script that's used to
-  // add navigation and inspector functionality to the preview
-  (function () {
-    // 1) Get the <script> tag that's currently running:
-    var me = document.currentScript;
-
-    // 2) Create the blocking‐style <script> to load:
-    var script = document.createElement("script");
-    script.src = "https://codesandbox.io/p/preview-protocol.js";
-
-    // By default a dynamically‐inserted <script> is async=true.
-    // Turn async off to make it behave like a normal blocking <script>:
-    script.async = false;
-    // (Do NOT set defer.)
-
-    // 3) Insert it immediately after the current <script>:
-    me.parentNode.insertBefore(script, me);
-  })();
-
-  const isIFramePreview = window.top !== window.self;
-
-  // Only run this script in editor context
-  if (isIFramePreview) {
-    // This script is used to enable Chrome DevTools functionality
-    (function () {
-      var script = document.createElement("script");
-      script.src =
-        "https://codesandbox.io/p/chrome-devtool/protocol/index.js";
-
-      script.onload = () => {
-        const devtoolProtocol = window.chobitsu;
-        if (devtoolProtocol) {
-          window.addEventListener("message", (event) => {
-            const { type, data } = event.data;
-
-            if (type === "FROM_DEVTOOL") {
-              devtoolProtocol.sendRawMessage(data);
-            }
-          });
-
-          devtoolProtocol.setOnMessage((data) => {
-            if (data.includes('"id":"tmp')) {
-              return;
-            }
-
-            window.parent.postMessage({ type: "TO_DEVTOOL", data }, "*");
-          });
-
-          devtoolProtocol.sendRawMessage(
-            `{"id":5,"method":"Runtime.enable","params":{}}`
-          );
-        }        
-      }
-
-      (document.head || document.documentElement).prepend(script);
-    })();
-  }
-
-  if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined") {
-    let nextID = 0;
-    let hook = (__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-      renderers: new Map(),
-      supportsFiber: true,
-      inject: (renderer) => {
-        const id = nextID++;
-        hook.renderers.set(id, renderer);
-        return id;
-      },
-      onScheduleFiberRoot() {},
-      onCommitFiberRoot() {},
-      onCommitFiberUnmount() {},
-    });
-  }
-
-  document.currentScript.remove();
-</script>
-<script type="text/javascript">
-  // This is a CodeSandbox injection script that's used to
-  // add navigation and inspector functionality to the preview
-  (function () {
-    // 1) Get the <script> tag that's currently running:
-    var me = document.currentScript;
-
-    // 2) Create the blocking‐style <script> to load:
-    var script = document.createElement("script");
-    script.src = "https://codesandbox.io/p/preview-protocol.js";
-
-    // By default a dynamically‐inserted <script> is async=true.
-    // Turn async off to make it behave like a normal blocking <script>:
-    script.async = false;
-    // (Do NOT set defer.)
-
-    // 3) Insert it immediately after the current <script>:
-    me.parentNode.insertBefore(script, me);
-  })();
-
-  const isIFramePreview = window.top !== window.self;
-
-  // Only run this script in editor context
-  if (isIFramePreview) {
-    // This script is used to enable Chrome DevTools functionality
-    (function () {
-      var script = document.createElement("script");
-      script.src =
-        "https://codesandbox.io/p/chrome-devtool/protocol/index.js";
-
-      script.onload = () => {
-        const devtoolProtocol = window.chobitsu;
-        if (devtoolProtocol) {
-          window.addEventListener("message", (event) => {
-            const { type, data } = event.data;
-
-            if (type === "FROM_DEVTOOL") {
-              devtoolProtocol.sendRawMessage(data);
-            }
-          });
-
-          devtoolProtocol.setOnMessage((data) => {
-            if (data.includes('"id":"tmp')) {
-              return;
-            }
-
-            window.parent.postMessage({ type: "TO_DEVTOOL", data }, "*");
-          });
-
-          devtoolProtocol.sendRawMessage(
-            `{"id":5,"method":"Runtime.enable","params":{}}`
-          );
-        }        
-      }
-
-      (document.head || document.documentElement).prepend(script);
-    })();
-  }
-
-  if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined") {
-    let nextID = 0;
-    let hook = (__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-      renderers: new Map(),
-      supportsFiber: true,
-      inject: (renderer) => {
-        const id = nextID++;
-        hook.renderers.set(id, renderer);
-        return id;
-      },
-      onScheduleFiberRoot() {},
-      onCommitFiberRoot() {},
-      onCommitFiberUnmount() {},
-    });
-  }
-
-  document.currentScript.remove();
-</script>
-<script type="text/javascript">
-  // This is a CodeSandbox injection script that's used to
-  // add navigation and inspector functionality to the preview
-  (function () {
-    // 1) Get the <script> tag that's currently running:
-    var me = document.currentScript;
-
-    // 2) Create the blocking‐style <script> to load:
-    var script = document.createElement("script");
-    script.src = "https://codesandbox.io/p/preview-protocol.js";
-
-    // By default a dynamically‐inserted <script> is async=true.
-    // Turn async off to make it behave like a normal blocking <script>:
-    script.async = false;
-    // (Do NOT set defer.)
-
-    // 3) Insert it immediately after the current <script>:
-    me.parentNode.insertBefore(script, me);
-  })();
-
-  const isIFramePreview = window.top !== window.self;
-
-  // Only run this script in editor context
-  if (isIFramePreview) {
-    // This script is used to enable Chrome DevTools functionality
-    (function () {
-      var script = document.createElement("script");
-      script.src =
-        "https://codesandbox.io/p/chrome-devtool/protocol/index.js";
-
-      script.onload = () => {
-        const devtoolProtocol = window.chobitsu;
-        if (devtoolProtocol) {
-          window.addEventListener("message", (event) => {
-            const { type, data } = event.data;
-
-            if (type === "FROM_DEVTOOL") {
-              devtoolProtocol.sendRawMessage(data);
-            }
-          });
-
-          devtoolProtocol.setOnMessage((data) => {
-            if (data.includes('"id":"tmp')) {
-              return;
-            }
-
-            window.parent.postMessage({ type: "TO_DEVTOOL", data }, "*");
-          });
-
-          devtoolProtocol.sendRawMessage(
-            `{"id":5,"method":"Runtime.enable","params":{}}`
-          );
-        }        
-      }
-
-      (document.head || document.documentElement).prepend(script);
-    })();
-  }
-
-  if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined") {
-    let nextID = 0;
-    let hook = (__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-      renderers: new Map(),
-      supportsFiber: true,
-      inject: (renderer) => {
-        const id = nextID++;
-        hook.renderers.set(id, renderer);
-        return id;
-      },
-      onScheduleFiberRoot() {},
-      onCommitFiberRoot() {},
-      onCommitFiberUnmount() {},
-    });
-  }
-
-  document.currentScript.remove();
-</script>
-<script type="text/javascript">
-  // This is a CodeSandbox injection script that's used to
-  // add navigation and inspector functionality to the preview
-  (function () {
-    // 1) Get the <script> tag that's currently running:
-    var me = document.currentScript;
-
-    // 2) Create the blocking‐style <script> to load:
-    var script = document.createElement("script");
-    script.src = "https://codesandbox.io/p/preview-protocol.js";
-
-    // By default a dynamically‐inserted <script> is async=true.
-    // Turn async off to make it behave like a normal blocking <script>:
-    script.async = false;
-    // (Do NOT set defer.)
-
-    // 3) Insert it immediately after the current <script>:
-    me.parentNode.insertBefore(script, me);
-  })();
-
-  const isIFramePreview = window.top !== window.self;
-
-  // Only run this script in editor context
-  if (isIFramePreview) {
-    // This script is used to enable Chrome DevTools functionality
-    (function () {
-      var script = document.createElement("script");
-      script.src =
-        "https://codesandbox.io/p/chrome-devtool/protocol/index.js";
-
-      script.onload = () => {
-        const devtoolProtocol = window.chobitsu;
-        if (devtoolProtocol) {
-          window.addEventListener("message", (event) => {
-            const { type, data } = event.data;
-
-            if (type === "FROM_DEVTOOL") {
-              devtoolProtocol.sendRawMessage(data);
-            }
-          });
-
-          devtoolProtocol.setOnMessage((data) => {
-            if (data.includes('"id":"tmp')) {
-              return;
-            }
-
-            window.parent.postMessage({ type: "TO_DEVTOOL", data }, "*");
-          });
-
-          devtoolProtocol.sendRawMessage(
-            `{"id":5,"method":"Runtime.enable","params":{}}`
-          );
-        }        
-      }
-
-      (document.head || document.documentElement).prepend(script);
-    })();
-  }
-
-  if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined") {
-    let nextID = 0;
-    let hook = (__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-      renderers: new Map(),
-      supportsFiber: true,
-      inject: (renderer) => {
-        const id = nextID++;
-        hook.renderers.set(id, renderer);
-        return id;
-      },
-      onScheduleFiberRoot() {},
-      onCommitFiberRoot() {},
-      onCommitFiberUnmount() {},
-    });
-  }
-
-  document.currentScript.remove();
-</script>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enhanced Student Attendance Management System</title>
     
@@ -558,6 +250,7 @@
             height: 100%;
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
             transition: left 0.5s;
+            pointer-events: none;
         }
 
         .btn:hover:before {
@@ -799,7 +492,8 @@
             padding: 20px;
         }
 
-        .modal.active {
+        .modal.active,
+        .modal:not(.hidden) {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3579,28 +3273,6 @@
         }
         .sync-status-dot.offline { background: var(--danger); }
         .sync-status-dot.syncing { background: var(--warning); animation: offlinePulse 1s ease-in-out infinite; }
-
-        /* Modal Close Button */
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 28px;
-            cursor: pointer;
-            color: var(--text-light);
-            padding: 0;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-            line-height: 1;
-        }
-        .modal-close:hover {
-            background: var(--danger);
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -3795,7 +3467,7 @@
                 <div class="nav-icon">⚙️</div>
                 <span data-translate="settings">Settings</span>
             </div>
-            <div class="nav-item" data-page="superadmin" data-roles="super_admin" id="superAdminNavItem" style="display:none;">
+            <div class="nav-item" data-page="superadmin" data-roles="super_admin" id="superAdminNavItem">
                 <div class="nav-icon">🛡️</div>
                 <span data-translate="super_admin">Super Admin</span>
             </div>
@@ -5234,11 +4906,11 @@
                 </div>
 
                 <!-- Bulk Notification Modal -->
-                <div id="saBulkNotificationModal" class="modal">
+                <div id="saBulkNotificationModal" class="modal hidden">
                     <div class="modal-content" style="max-width:550px;">
                         <div class="modal-header">
                             <h2>📢 Send Notification to All Schools</h2>
-                            <button class="modal-close" onclick="document.getElementById('saBulkNotificationModal').classList.remove('active')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saBulkNotificationModal').classList.add('hidden')">&times;</button>
                         </div>
                         <form onsubmit="handleBulkNotification(event)" style="padding:20px;">
                             <div class="form-group">
@@ -5265,7 +4937,7 @@
                                 </label>
                             </div>
                             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                                <button type="button" class="btn" onclick="document.getElementById('saBulkNotificationModal').classList.remove('active')">Cancel</button>
+                                <button type="button" class="btn" onclick="document.getElementById('saBulkNotificationModal').classList.add('hidden')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">📢 Send to All Schools</button>
                             </div>
                         </form>
@@ -5273,11 +4945,11 @@
                 </div>
 
                 <!-- School Detail Modal -->
-                <div id="saTenantDetailModal" class="modal">
+                <div id="saTenantDetailModal" class="modal hidden">
                     <div class="modal-content" style="max-width:600px;">
                         <div class="modal-header">
                             <h2 id="saTenantDetailTitle">School Details</h2>
-                            <button class="modal-close" onclick="document.getElementById('saTenantDetailModal').classList.remove('active')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saTenantDetailModal').classList.add('hidden')">&times;</button>
                         </div>
                         <div id="saTenantDetailBody" style="padding:20px;">
                         </div>
@@ -5285,11 +4957,11 @@
                 </div>
 
                 <!-- Create School Modal -->
-                <div id="saCreateSchoolModal" class="modal">
+                <div id="saCreateSchoolModal" class="modal hidden">
                     <div class="modal-content" style="max-width:600px;">
                         <div class="modal-header">
                             <h2>➕ Create New School</h2>
-                            <button class="modal-close" onclick="document.getElementById('saCreateSchoolModal').classList.remove('active')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saCreateSchoolModal').classList.add('hidden')">&times;</button>
                         </div>
                         <form id="saCreateSchoolForm" onsubmit="handleCreateSchool(event)" style="padding:20px;">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -5348,7 +5020,7 @@
                                 </div>
                             </div>
                             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                                <button type="button" class="btn" onclick="document.getElementById('saCreateSchoolModal').classList.remove('active')">Cancel</button>
+                                <button type="button" class="btn" onclick="document.getElementById('saCreateSchoolModal').classList.add('hidden')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">
                                     <span id="saCreateSpinner" class="spinner hidden"></span>
                                     Create School
@@ -5359,11 +5031,11 @@
                 </div>
 
                 <!-- Edit School Modal -->
-                <div id="saEditTenantModal" class="modal">
+                <div id="saEditTenantModal" class="modal hidden">
                     <div class="modal-content" style="max-width:600px;">
                         <div class="modal-header">
                             <h2>Edit School</h2>
-                            <button class="modal-close" onclick="document.getElementById('saEditTenantModal').classList.remove('active')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saEditTenantModal').classList.add('hidden')">&times;</button>
                         </div>
                         <form id="saEditTenantForm" onsubmit="handleEditTenant(event)" style="padding:20px;">
                             <input type="hidden" id="saEditTenantId">
@@ -5430,7 +5102,7 @@
                                 </div>
                             </div>
                             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                                <button type="button" class="btn" onclick="document.getElementById('saEditTenantModal').classList.remove('active')">Cancel</button>
+                                <button type="button" class="btn" onclick="document.getElementById('saEditTenantModal').classList.add('hidden')">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
                         </form>
@@ -5438,11 +5110,11 @@
                 </div>
 
                 <!-- Delete School Confirmation Modal -->
-                <div id="saDeleteTenantModal" class="modal">
+                <div id="saDeleteTenantModal" class="modal hidden">
                     <div class="modal-content" style="max-width:500px;">
                         <div class="modal-header">
                             <h2 style="color:#ef4444;">⚠️ Delete School</h2>
-                            <button class="modal-close" onclick="document.getElementById('saDeleteTenantModal').classList.remove('active')">&times;</button>
+                            <button class="modal-close" onclick="document.getElementById('saDeleteTenantModal').classList.add('hidden')">&times;</button>
                         </div>
                         <div style="padding:20px;">
                             <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:16px;margin-bottom:16px;">
@@ -5454,7 +5126,7 @@
                             <input type="text" id="saDeleteConfirmInput" class="form-input" placeholder="Type school name here..." style="margin-bottom:16px;" oninput="validateDeleteConfirm()">
                             <input type="hidden" id="saDeleteTenantId">
                             <div style="display:flex;gap:10px;justify-content:flex-end;">
-                                <button class="btn" onclick="document.getElementById('saDeleteTenantModal').classList.remove('active')">Cancel</button>
+                                <button class="btn" onclick="document.getElementById('saDeleteTenantModal').classList.add('hidden')">Cancel</button>
                                 <button class="btn" style="background:#ef4444;color:white;opacity:0.5;cursor:not-allowed;" id="saDeleteConfirmBtn" onclick="confirmDeleteTenant()" disabled>Delete Permanently</button>
                             </div>
                         </div>
@@ -7557,16 +7229,15 @@
             const isSuperAdmin = auth.isSuperAdmin || false;
 
             document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-                const allowedRoles = item.dataset.roles ? item.dataset.roles.split(',') : ['admin'];
-                // Special handling for super_admin tab
-                if (item.dataset.page === 'superadmin') {
-                    item.style.display = isSuperAdmin ? 'flex' : 'none';
-                } else if (allowedRoles.includes(role)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
+                // Show ALL tabs for all users, including superadmin
+                item.style.display = 'flex';
             });
+
+            // Also ensure superadmin nav item inline style is removed
+            const superAdminNav = document.getElementById('superAdminNavItem');
+            if (superAdminNav) {
+                superAdminNav.style.display = 'flex';
+            }
         }
 
         function logout() {
@@ -7615,42 +7286,6 @@
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('registrationScreen').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
-            // Load available schools for the dropdown
-            loadLoginSchools();
-        }
-
-        // Load schools for login dropdown
-        async function loadLoginSchools() {
-            const schoolGroup = document.getElementById('loginSchoolGroup');
-            const schoolSelect = document.getElementById('loginSlug');
-            if (!schoolGroup || !schoolSelect) return;
-
-            try {
-                // Try to fetch schools from API
-                const result = await apiGet('/saas/tenants');
-                if (result && result.success && result.data && result.data.length > 0) {
-                    // Clear existing options except the first one
-                    while (schoolSelect.options.length > 1) {
-                        schoolSelect.remove(1);
-                    }
-                    // Add schools to dropdown
-                    result.data.forEach(school => {
-                        const option = document.createElement('option');
-                        option.value = school.slug || school.id;
-                        option.textContent = school.name || 'Unknown School';
-                        schoolSelect.appendChild(option);
-                    });
-                    // Show the school dropdown
-                    schoolGroup.style.display = 'block';
-                } else {
-                    // Hide school dropdown if no schools available
-                    schoolGroup.style.display = 'none';
-                }
-            } catch (e) {
-                // If API fails, hide the school dropdown
-                console.log('Could not load schools for login:', e.message);
-                schoolGroup.style.display = 'none';
-            }
         }
 
         function showRegistrationScreen() {
@@ -8501,6 +8136,7 @@
 
         // Keyboard shortcut for global search (Ctrl+K)
         document.addEventListener('keydown', function(e) {
+            if (!e.key) return;
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 openGlobalSearch();
@@ -9095,18 +8731,15 @@
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
-                // Prefer 'active' class pattern (used by showModal and Super Admin modals)
-                if (modal.classList.contains('active')) {
-                    modal.classList.remove('active');
-                } else if (modal.classList.contains('hidden')) {
-                    // Legacy hidden class pattern
+                // Check if modal uses 'hidden' class (static modals like studentProfileModal)
+                if (modal.classList.contains('hidden') || modalId === 'studentProfileModal') {
                     modal.classList.add('hidden');
-                } else if (!modalId.endsWith('Modal')) {
-                    // For dynamically created non-modal elements, remove them entirely
-                    modal.remove();
-                } else {
-                    // Modal with no active/hidden - ensure it's hidden via base CSS
+                } else if (modal.classList.contains('active')) {
                     modal.classList.remove('active');
+                    modal.classList.add('hidden');
+                } else {
+                    // For dynamically created modals without active/hidden, remove them entirely
+                    modal.remove();
                 }
             }
             editingId = null;
@@ -16705,6 +16338,8 @@
         }
 
         document.addEventListener('keydown', function(e) {
+            // Guard: some events may not have e.key (e.g. IME composition events)
+            if (!e.key) return;
             // Escape key - close any open modal or overlay
             if (e.key === 'Escape') {
                 if (shortcutsOverlayOpen) {
@@ -17018,50 +16653,34 @@
         let saTenantsCache = [];
 
         function showSuperAdminTab(tabName) {
-            // Hide all tab contents and remove active class
-            document.querySelectorAll('#superadminPage .tab-content').forEach(tc => {
-                tc.style.display = 'none';
-                tc.classList.remove('active');
-            });
-            // Remove active class from all tabs
+            document.querySelectorAll('#superadminPage .tab-content').forEach(tc => { tc.style.display = 'none'; tc.classList.remove('active'); });
             document.querySelectorAll('#superadminPage .tab').forEach(t => t.classList.remove('active'));
-
-            // Show target tab content
-            const targetTabId = 'sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab';
-            const targetTab = document.getElementById(targetTabId);
-            if (targetTab) {
-                targetTab.style.display = 'block';
-                targetTab.classList.add('active');
-            }
-
-            // Activate the tab button
-            const tabButton = document.querySelector(`#superadminPage .tab[onclick="showSuperAdminTab('${tabName}')"]`);
-            if (tabButton) {
-                tabButton.classList.add('active');
-            }
-
-            // Load data based on tab
-            switch(tabName) {
-                case 'overview':
-                case 'tenants':
-                    loadSuperAdminData();
-                    break;
-                case 'statistics':
-                    loadSuperAdminStatistics();
-                    break;
-                case 'settings':
-                    loadSuperAdminSettings();
-                    break;
-                case 'activity':
-                    loadSuperAdminActivity();
-                    break;
-                case 'health':
-                    loadSuperAdminHealth();
-                    break;
+            const targetTab = document.getElementById('sa' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab');
+            if (targetTab) { targetTab.style.display = 'block'; targetTab.classList.add('active'); }
+            document.querySelector(`[onclick="showSuperAdminTab('${tabName}')"]`)?.classList.add('active');
+            if (tabName === 'tenants' || tabName === 'overview') {
+                loadSuperAdminData();
+            } else if (tabName === 'statistics') {
+                loadSuperAdminStatistics();
+            } else if (tabName === 'settings') {
+                loadSuperAdminSettings();
+            } else if (tabName === 'activity') {
+                loadSuperAdminActivity();
+            } else if (tabName === 'health') {
+                loadSuperAdminHealth();
             }
         }
 
         async function loadSuperAdminData() {
+            // Check if user is authenticated
+            if (!apiToken) {
+                console.warn('Super-admin data load: No API token available');
+                const tbody = document.getElementById('saTenantsTableBody');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:30px;"><div style="font-size:32px;margin-bottom:10px;">🔒</div><p style="font-weight:600;">Authentication Required</p><p style="font-size:13px;margin-top:4px;">Please log in with a Super Admin account to view school data.</p></td></tr>';
+                const statsEl = document.getElementById('saPlatformStats');
+                if (statsEl) statsEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px;">🔒 Login required to view platform statistics.</p>';
+                return;
+            }
             try {
                 const statsResult = await apiGet('/saas/stats');
                 if (statsResult && statsResult.success && statsResult.data) {
@@ -17103,12 +16722,22 @@
                             </div>
                         `;
                     }
+                } else if (statsResult === null) {
+                    // Auth failure or network error
+                    const statsEl = document.getElementById('saPlatformStats');
+                    if (statsEl) statsEl.innerHTML = '<p style="color:#ef4444;text-align:center;padding:20px;">⚠️ Unable to load statistics. Your session may have expired. Please log out and log back in.</p>';
                 }
 
                 const tenantsResult = await apiGet('/saas/tenants');
                 if (tenantsResult && tenantsResult.success && tenantsResult.data) {
                     saTenantsCache = tenantsResult.data;
                     renderSuperAdminTenants(saTenantsCache);
+                } else if (tenantsResult === null) {
+                    // Auth failure or network error
+                    const tbody = document.getElementById('saTenantsTableBody');
+                    if (tbody && saTenantsCache.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:30px;"><div style="font-size:32px;margin-bottom:10px;">⚠️</div><p style="font-weight:600;">Unable to Load Schools</p><p style="font-size:13px;margin-top:4px;">Your session may have expired. Please <a href="#" onclick="logout();return false;" style="color:#3b82f6;text-decoration:underline;">log out and log back in</a>.</p></td></tr>';
+                    }
                 }
             } catch (e) {
                 console.error('Super-admin data load failed:', e);
@@ -17145,12 +16774,12 @@
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <button class="btn btn-sm btn-info" onclick="viewTenantDetail('${t.id}')" title="View Details">👁️</button>
                             <button class="btn btn-sm" style="background:#3b82f6;color:white;" onclick="editTenant('${t.id}')" title="Edit School">✏️</button>
-                            <button class="btn btn-sm" style="background:#8b5cf6;color:white;" onclick="switchToTenant('${t.id}', ${JSON.stringify(t.name || '')})" title="Switch to School">🔄</button>
+                            <button class="btn btn-sm" style="background:#8b5cf6;color:white;" onclick="switchToTenant('${t.id}', '${(t.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" title="Switch to School">🔄</button>
                             ${t.status === 'active'
                                 ? `<button class="btn btn-sm" style="background:#f59e0b;color:white;" onclick="suspendTenant('${t.id}')" title="Suspend">⏸️</button>`
                                 : `<button class="btn btn-sm btn-success" onclick="activateTenant('${t.id}')" title="Activate">▶️</button>`
                             }
-                            <button class="btn btn-sm btn-danger" onclick="deleteTenant('${t.id}', ${JSON.stringify(t.name || '')})" title="Delete">🗑️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTenant('${t.id}', '${(t.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" title="Delete">🗑️</button>
                         </div>
                     </td>
                 </tr>`;
@@ -17202,7 +16831,7 @@
                         <button class="btn" style="background:#ef4444;color:white;" onclick="resetTenantData('${t.id}', '${t.name}')">⚠️ Reset Data</button>
                     </div>
                 `;
-                modal.classList.add('active');
+                modal.classList.remove('hidden');
             } catch (e) {
                 showToast('Error loading tenant: ' + e.message, 'error');
             }
@@ -17290,7 +16919,7 @@
             document.getElementById('saDeleteConfirmBtn').disabled = true;
             document.getElementById('saDeleteConfirmBtn').style.opacity = '0.5';
             document.getElementById('saDeleteConfirmBtn').style.cursor = 'not-allowed';
-            document.getElementById('saDeleteTenantModal').classList.add('active');
+            document.getElementById('saDeleteTenantModal').classList.remove('hidden');
         }
 
         function validateDeleteConfirm() {
@@ -17316,7 +16945,7 @@
                 if (result && result.success) {
                     showToast('School deleted permanently');
                     logSuperAdminActivity('data', 'School Deleted', 'Permanently deleted school: ' + id);
-                    document.getElementById('saDeleteTenantModal').classList.remove('active');
+                    document.getElementById('saDeleteTenantModal').classList.add('hidden');
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to delete: ' + (result?.error || 'Unknown error'), 'error');
@@ -17344,7 +16973,7 @@
                 document.getElementById('saEditMaxStudents').value = t.max_students || 100;
                 document.getElementById('saEditMaxUsers').value = t.max_users || 5;
                 document.getElementById('saEditLogoUrl').value = t.logo_url || '';
-                document.getElementById('saEditTenantModal').classList.add('active');
+                document.getElementById('saEditTenantModal').classList.remove('hidden');
             } catch (e) {
                 showToast('Error loading school: ' + e.message, 'error');
             }
@@ -17369,7 +16998,7 @@
                 if (result && result.success) {
                     showToast('School updated successfully');
                     logSuperAdminActivity('data', 'School Modified', 'Updated school: ' + id + ' (' + data.name + ')');
-                    document.getElementById('saEditTenantModal').classList.remove('active');
+                    document.getElementById('saEditTenantModal').classList.add('hidden');
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to update: ' + (result?.error || 'Unknown error'), 'error');
@@ -17500,7 +17129,7 @@
             document.getElementById('saCreateMaxStudents').value = '100';
             document.getElementById('saCreateMaxUsers').value = '5';
             document.getElementById('saCreatePrimaryColor').value = '#6366f1';
-            document.getElementById('saCreateSchoolModal').classList.add('active');
+            document.getElementById('saCreateSchoolModal').classList.remove('hidden');
         }
 
         async function handleCreateSchool(event) {
@@ -17528,24 +17157,28 @@
 
             spinner.classList.remove('hidden');
             try {
-                // Use the registration endpoint to create a new school
-                const result = await apiPost('/register', {
+                // Use the schools endpoint to create a new school
+                const result = await apiPost('/schools', {
                     name: name,
-                    slug: slug,
-                    admin_name: adminName,
-                    admin_email: adminEmail,
-                    password: password,
-                    country: country,
-                    language: language,
-                    max_students: maxStudents,
-                    max_users: maxUsers,
-                    primary_color: primaryColor
+                    address: null,
+                    phone: null,
+                    email: adminEmail,
+                    admin_username: adminName,
+                    admin_password: password,
+                    logo: null,
+                    is_active: 1
                 });
 
                 if (result && result.success) {
                     showToast('School "' + name + '" created successfully!');
-                    logSuperAdminActivity('data', 'School Created', 'Created new school: ' + name + ' (' + slug + ')');
-                    document.getElementById('saCreateSchoolModal').classList.remove('active');
+                    logSuperAdminActivity('data', 'School Created', 'Created new school: ' + name);
+                    document.getElementById('saCreateSchoolModal').classList.add('hidden');
+                    document.getElementById('saCreateSchoolForm').reset();
+                    document.getElementById('saCreateCountry').value = 'MA';
+                    document.getElementById('saCreateLanguage').value = 'fr';
+                    document.getElementById('saCreateMaxStudents').value = '100';
+                    document.getElementById('saCreateMaxUsers').value = '5';
+                    document.getElementById('saCreatePrimaryColor').value = '#6366f1';
                     loadSuperAdminData();
                 } else {
                     showToast('Failed to create school: ' + (result?.error || 'Unknown error'), 'error');
@@ -17559,7 +17192,7 @@
 
         // ==================== BULK NOTIFICATION ====================
         function showBulkNotificationModal() {
-            document.getElementById('saBulkNotificationModal').classList.add('active');
+            document.getElementById('saBulkNotificationModal').classList.remove('hidden');
         }
 
         async function handleBulkNotification(event) {
@@ -17598,7 +17231,7 @@
 
                 showToast('Notification sent to ' + sentCount + ' school(s)!');
                 logSuperAdminActivity('system', 'Bulk Notification Sent', '"' + title + '" sent to ' + sentCount + ' schools');
-                document.getElementById('saBulkNotificationModal').classList.remove('active');
+                document.getElementById('saBulkNotificationModal').classList.add('hidden');
                 document.getElementById('saBulkNotifTitle').value = '';
                 document.getElementById('saBulkNotifMessage').value = '';
             } catch (e) {
@@ -17608,6 +17241,11 @@
 
         // ==================== STATISTICS TAB ====================
         async function loadSuperAdminStatistics() {
+            if (!apiToken) {
+                const perSchoolEl = document.getElementById('saStatsPerSchool');
+                if (perSchoolEl) perSchoolEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px;">🔒 Login required to view statistics.</p>';
+                return;
+            }
             try {
                 const statsResult = await apiGet('/saas/stats');
                 const tenantsResult = await apiGet('/saas/tenants');
@@ -17817,17 +17455,23 @@
         // ==================== SYSTEM HEALTH ====================
         async function loadSuperAdminHealth() {
             const startTime = Date.now();
+            const isAuthenticated = !!apiToken;
 
-            // Check API health
+            // Check API health (public endpoint)
             try {
                 const healthResult = await apiGet('/health');
                 const apiLatency = Date.now() - startTime;
 
-                if (healthResult && healthResult.success) {
+                if (healthResult && (healthResult.success || healthResult.status === 'ok')) {
                     document.getElementById('saHealthApiIcon').textContent = '✅';
                     document.getElementById('saHealthApiStatus').textContent = 'Operational';
                     document.getElementById('saHealthApiStatus').style.color = '#10b981';
                     document.getElementById('saHealthApiDetail').textContent = `Response time: ${apiLatency}ms | Version: ${healthResult.version || 'N/A'}`;
+                } else if (healthResult === null) {
+                    document.getElementById('saHealthApiIcon').textContent = '❌';
+                    document.getElementById('saHealthApiStatus').textContent = 'Unreachable';
+                    document.getElementById('saHealthApiStatus').style.color = '#ef4444';
+                    document.getElementById('saHealthApiDetail').textContent = 'API server is not reachable';
                 } else {
                     document.getElementById('saHealthApiIcon').textContent = '⚠️';
                     document.getElementById('saHealthApiStatus').textContent = 'Degraded';
@@ -17841,25 +17485,38 @@
                 document.getElementById('saHealthApiDetail').textContent = 'Error: ' + (e.message || 'Unable to reach API');
             }
 
-            // Check database via stats endpoint
+            // Check database via stats endpoint (requires auth)
             try {
-                const statsResult = await apiGet('/saas/stats');
-                if (statsResult && statsResult.success) {
-                    const s = statsResult.data;
-                    document.getElementById('saHealthDbIcon').textContent = '✅';
-                    document.getElementById('saHealthDbStatus').textContent = 'Connected';
-                    document.getElementById('saHealthDbStatus').style.color = '#10b981';
-                    document.getElementById('saHealthDbDetail').textContent = `${s.totalTenants || 0} schools · ${s.totalStudents || 0} students · ${s.totalUsers || 0} users`;
-
-                    // Data overview
-                    document.getElementById('saHealthDataStatus').textContent = `${s.totalStudents || 0} Records`;
-                    document.getElementById('saHealthDataStatus').style.color = '#8b5cf6';
-                    document.getElementById('saHealthDataDetail').textContent = `Active: ${s.activeTenants || 0} schools operational`;
-                } else {
-                    document.getElementById('saHealthDbIcon').textContent = '⚠️';
-                    document.getElementById('saHealthDbStatus').textContent = 'Partial';
+                if (!isAuthenticated) {
+                    document.getElementById('saHealthDbIcon').textContent = '🔒';
+                    document.getElementById('saHealthDbStatus').textContent = 'Not Authenticated';
                     document.getElementById('saHealthDbStatus').style.color = '#f59e0b';
-                    document.getElementById('saHealthDbDetail').textContent = 'Stats endpoint returned partial data';
+                    document.getElementById('saHealthDbDetail').textContent = 'Login required to check database status';
+                    document.getElementById('saHealthDataStatus').textContent = 'N/A';
+                    document.getElementById('saHealthDataStatus').style.color = 'var(--text-light)';
+                    document.getElementById('saHealthDataDetail').textContent = 'Login required';
+                } else {
+                    const statsResult = await apiGet('/saas/stats');
+                    if (statsResult && statsResult.success) {
+                        const s = statsResult.data;
+                        document.getElementById('saHealthDbIcon').textContent = '✅';
+                        document.getElementById('saHealthDbStatus').textContent = 'Connected';
+                        document.getElementById('saHealthDbStatus').style.color = '#10b981';
+                        document.getElementById('saHealthDbDetail').textContent = `${s.totalTenants || 0} schools · ${s.totalStudents || 0} students · ${s.totalUsers || 0} users`;
+
+                        // Data overview
+                        document.getElementById('saHealthDataStatus').textContent = `${s.totalStudents || 0} Records`;
+                        document.getElementById('saHealthDataStatus').style.color = '#8b5cf6';
+                        document.getElementById('saHealthDataDetail').textContent = `Active: ${s.activeTenants || 0} schools operational`;
+                    } else {
+                        document.getElementById('saHealthDbIcon').textContent = '⚠️';
+                        document.getElementById('saHealthDbStatus').textContent = 'Session Expired';
+                        document.getElementById('saHealthDbStatus').style.color = '#f59e0b';
+                        document.getElementById('saHealthDbDetail').textContent = 'Auth token invalid or expired. Please log out and log back in.';
+                        document.getElementById('saHealthDataStatus').textContent = 'N/A';
+                        document.getElementById('saHealthDataStatus').style.color = 'var(--text-light)';
+                        document.getElementById('saHealthDataDetail').textContent = 'Re-authentication required';
+                    }
                 }
             } catch (e) {
                 document.getElementById('saHealthDbIcon').textContent = '❌';
@@ -17872,15 +17529,20 @@
             const diagEl = document.getElementById('saHealthDiagnostics');
             if (diagEl) {
                 const checks = [
-                    { name: 'API Health Endpoint', test: async () => { const r = await apiGet('/health'); return r && r.success; } },
-                    { name: 'SaaS Stats Endpoint', test: async () => { const r = await apiGet('/saas/stats'); return r && r.success; } },
-                    { name: 'SaaS Tenants Endpoint', test: async () => { const r = await apiGet('/saas/tenants'); return r && r.success; } }
+                    { name: 'API Health Endpoint', test: async () => { const r = await apiGet('/health'); return r && (r.success || r.status === 'ok'); }, requiresAuth: false },
+                    { name: 'SaaS Stats Endpoint', test: async () => { const r = await apiGet('/saas/stats'); return r && r.success; }, requiresAuth: true },
+                    { name: 'SaaS Tenants Endpoint', test: async () => { const r = await apiGet('/saas/tenants'); return r && r.success; }, requiresAuth: true }
                 ];
 
-                diagEl.innerHTML = checks.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="font-size:14px;">${c.name}</span><span class="sa-diag-pending" data-test="${c.name}" style="font-size:13px;color:var(--text-light);">⏳ Testing...</span></div>`).join('');
+                diagEl.innerHTML = checks.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><span style="font-size:14px;">${c.name}</span>${c.requiresAuth ? ' <span style="font-size:11px;color:var(--text-light);">(requires auth)</span>' : ''}</div><span class="sa-diag-pending" data-test="${c.name}" style="font-size:13px;color:var(--text-light);">⏳ Testing...</span></div>`).join('');
 
                 for (const check of checks) {
                     try {
+                        if (check.requiresAuth && !isAuthenticated) {
+                            const el = diagEl.querySelector(`[data-test="${check.name}"]`);
+                            if (el) { el.textContent = '🔒 Not Authenticated'; el.style.color = '#f59e0b'; }
+                            continue;
+                        }
                         const result = await check.test();
                         const el = diagEl.querySelector(`[data-test="${check.name}"]`);
                         if (el) { el.textContent = result ? '✅ Pass' : '❌ Fail'; el.style.color = result ? '#10b981' : '#ef4444'; }
@@ -17926,7 +17588,7 @@
 
         // ==================== BULK NOTIFICATIONS ====================
         function showBulkNotificationModal() {
-            document.getElementById('saBulkNotificationModal').classList.add('active');
+            document.getElementById('saBulkNotificationModal').classList.remove('hidden');
         }
 
         async function handleBulkNotification(event) {
@@ -17978,7 +17640,7 @@
                 // Log activity
                 logSuperAdminActivity('system', 'Bulk Notification Sent', `"${title}" sent to ${sentCount} school(s)`);
 
-                document.getElementById('saBulkNotificationModal').classList.remove('active');
+                document.getElementById('saBulkNotificationModal').classList.add('hidden');
                 document.getElementById('saBulkNotifTitle').value = '';
                 document.getElementById('saBulkNotifMessage').value = '';
                 document.getElementById('saBulkNotifUrgent').checked = false;
