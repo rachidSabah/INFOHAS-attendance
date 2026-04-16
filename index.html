@@ -16666,6 +16666,15 @@
         }
 
         async function loadSuperAdminData() {
+            // Check if user is authenticated
+            if (!apiToken) {
+                console.warn('Super-admin data load: No API token available');
+                const tbody = document.getElementById('saTenantsTableBody');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:30px;"><div style="font-size:32px;margin-bottom:10px;">🔒</div><p style="font-weight:600;">Authentication Required</p><p style="font-size:13px;margin-top:4px;">Please log in with a Super Admin account to view school data.</p></td></tr>';
+                const statsEl = document.getElementById('saPlatformStats');
+                if (statsEl) statsEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px;">🔒 Login required to view platform statistics.</p>';
+                return;
+            }
             try {
                 const statsResult = await apiGet('/saas/stats');
                 if (statsResult && statsResult.success && statsResult.data) {
@@ -16707,12 +16716,22 @@
                             </div>
                         `;
                     }
+                } else if (statsResult === null) {
+                    // Auth failure or network error
+                    const statsEl = document.getElementById('saPlatformStats');
+                    if (statsEl) statsEl.innerHTML = '<p style="color:#ef4444;text-align:center;padding:20px;">⚠️ Unable to load statistics. Your session may have expired. Please log out and log back in.</p>';
                 }
 
                 const tenantsResult = await apiGet('/saas/tenants');
                 if (tenantsResult && tenantsResult.success && tenantsResult.data) {
                     saTenantsCache = tenantsResult.data;
                     renderSuperAdminTenants(saTenantsCache);
+                } else if (tenantsResult === null) {
+                    // Auth failure or network error
+                    const tbody = document.getElementById('saTenantsTableBody');
+                    if (tbody && saTenantsCache.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:30px;"><div style="font-size:32px;margin-bottom:10px;">⚠️</div><p style="font-weight:600;">Unable to Load Schools</p><p style="font-size:13px;margin-top:4px;">Your session may have expired. Please <a href="#" onclick="logout();return false;" style="color:#3b82f6;text-decoration:underline;">log out and log back in</a>.</p></td></tr>';
+                    }
                 }
             } catch (e) {
                 console.error('Super-admin data load failed:', e);
@@ -17212,6 +17231,11 @@
 
         // ==================== STATISTICS TAB ====================
         async function loadSuperAdminStatistics() {
+            if (!apiToken) {
+                const perSchoolEl = document.getElementById('saStatsPerSchool');
+                if (perSchoolEl) perSchoolEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px;">🔒 Login required to view statistics.</p>';
+                return;
+            }
             try {
                 const statsResult = await apiGet('/saas/stats');
                 const tenantsResult = await apiGet('/saas/tenants');
@@ -17421,8 +17445,9 @@
         // ==================== SYSTEM HEALTH ====================
         async function loadSuperAdminHealth() {
             const startTime = Date.now();
+            const isAuthenticated = !!apiToken;
 
-            // Check API health
+            // Check API health (public endpoint)
             try {
                 const healthResult = await apiGet('/health');
                 const apiLatency = Date.now() - startTime;
@@ -17432,6 +17457,11 @@
                     document.getElementById('saHealthApiStatus').textContent = 'Operational';
                     document.getElementById('saHealthApiStatus').style.color = '#10b981';
                     document.getElementById('saHealthApiDetail').textContent = `Response time: ${apiLatency}ms | Version: ${healthResult.version || 'N/A'}`;
+                } else if (healthResult === null) {
+                    document.getElementById('saHealthApiIcon').textContent = '❌';
+                    document.getElementById('saHealthApiStatus').textContent = 'Unreachable';
+                    document.getElementById('saHealthApiStatus').style.color = '#ef4444';
+                    document.getElementById('saHealthApiDetail').textContent = 'API server is not reachable';
                 } else {
                     document.getElementById('saHealthApiIcon').textContent = '⚠️';
                     document.getElementById('saHealthApiStatus').textContent = 'Degraded';
@@ -17445,25 +17475,38 @@
                 document.getElementById('saHealthApiDetail').textContent = 'Error: ' + (e.message || 'Unable to reach API');
             }
 
-            // Check database via stats endpoint
+            // Check database via stats endpoint (requires auth)
             try {
-                const statsResult = await apiGet('/saas/stats');
-                if (statsResult && statsResult.success) {
-                    const s = statsResult.data;
-                    document.getElementById('saHealthDbIcon').textContent = '✅';
-                    document.getElementById('saHealthDbStatus').textContent = 'Connected';
-                    document.getElementById('saHealthDbStatus').style.color = '#10b981';
-                    document.getElementById('saHealthDbDetail').textContent = `${s.totalTenants || 0} schools · ${s.totalStudents || 0} students · ${s.totalUsers || 0} users`;
-
-                    // Data overview
-                    document.getElementById('saHealthDataStatus').textContent = `${s.totalStudents || 0} Records`;
-                    document.getElementById('saHealthDataStatus').style.color = '#8b5cf6';
-                    document.getElementById('saHealthDataDetail').textContent = `Active: ${s.activeTenants || 0} schools operational`;
-                } else {
-                    document.getElementById('saHealthDbIcon').textContent = '⚠️';
-                    document.getElementById('saHealthDbStatus').textContent = 'Partial';
+                if (!isAuthenticated) {
+                    document.getElementById('saHealthDbIcon').textContent = '🔒';
+                    document.getElementById('saHealthDbStatus').textContent = 'Not Authenticated';
                     document.getElementById('saHealthDbStatus').style.color = '#f59e0b';
-                    document.getElementById('saHealthDbDetail').textContent = 'Stats endpoint returned partial data';
+                    document.getElementById('saHealthDbDetail').textContent = 'Login required to check database status';
+                    document.getElementById('saHealthDataStatus').textContent = 'N/A';
+                    document.getElementById('saHealthDataStatus').style.color = 'var(--text-light)';
+                    document.getElementById('saHealthDataDetail').textContent = 'Login required';
+                } else {
+                    const statsResult = await apiGet('/saas/stats');
+                    if (statsResult && statsResult.success) {
+                        const s = statsResult.data;
+                        document.getElementById('saHealthDbIcon').textContent = '✅';
+                        document.getElementById('saHealthDbStatus').textContent = 'Connected';
+                        document.getElementById('saHealthDbStatus').style.color = '#10b981';
+                        document.getElementById('saHealthDbDetail').textContent = `${s.totalTenants || 0} schools · ${s.totalStudents || 0} students · ${s.totalUsers || 0} users`;
+
+                        // Data overview
+                        document.getElementById('saHealthDataStatus').textContent = `${s.totalStudents || 0} Records`;
+                        document.getElementById('saHealthDataStatus').style.color = '#8b5cf6';
+                        document.getElementById('saHealthDataDetail').textContent = `Active: ${s.activeTenants || 0} schools operational`;
+                    } else {
+                        document.getElementById('saHealthDbIcon').textContent = '⚠️';
+                        document.getElementById('saHealthDbStatus').textContent = 'Session Expired';
+                        document.getElementById('saHealthDbStatus').style.color = '#f59e0b';
+                        document.getElementById('saHealthDbDetail').textContent = 'Auth token invalid or expired. Please log out and log back in.';
+                        document.getElementById('saHealthDataStatus').textContent = 'N/A';
+                        document.getElementById('saHealthDataStatus').style.color = 'var(--text-light)';
+                        document.getElementById('saHealthDataDetail').textContent = 'Re-authentication required';
+                    }
                 }
             } catch (e) {
                 document.getElementById('saHealthDbIcon').textContent = '❌';
@@ -17476,15 +17519,20 @@
             const diagEl = document.getElementById('saHealthDiagnostics');
             if (diagEl) {
                 const checks = [
-                    { name: 'API Health Endpoint', test: async () => { const r = await apiGet('/health'); return r && r.success; } },
-                    { name: 'SaaS Stats Endpoint', test: async () => { const r = await apiGet('/saas/stats'); return r && r.success; } },
-                    { name: 'SaaS Tenants Endpoint', test: async () => { const r = await apiGet('/saas/tenants'); return r && r.success; } }
+                    { name: 'API Health Endpoint', test: async () => { const r = await apiGet('/health'); return r && (r.success || r.status === 'ok'); }, requiresAuth: false },
+                    { name: 'SaaS Stats Endpoint', test: async () => { const r = await apiGet('/saas/stats'); return r && r.success; }, requiresAuth: true },
+                    { name: 'SaaS Tenants Endpoint', test: async () => { const r = await apiGet('/saas/tenants'); return r && r.success; }, requiresAuth: true }
                 ];
 
-                diagEl.innerHTML = checks.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><span style="font-size:14px;">${c.name}</span><span class="sa-diag-pending" data-test="${c.name}" style="font-size:13px;color:var(--text-light);">⏳ Testing...</span></div>`).join('');
+                diagEl.innerHTML = checks.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><span style="font-size:14px;">${c.name}</span>${c.requiresAuth ? ' <span style="font-size:11px;color:var(--text-light);">(requires auth)</span>' : ''}</div><span class="sa-diag-pending" data-test="${c.name}" style="font-size:13px;color:var(--text-light);">⏳ Testing...</span></div>`).join('');
 
                 for (const check of checks) {
                     try {
+                        if (check.requiresAuth && !isAuthenticated) {
+                            const el = diagEl.querySelector(`[data-test="${check.name}"]`);
+                            if (el) { el.textContent = '🔒 Not Authenticated'; el.style.color = '#f59e0b'; }
+                            continue;
+                        }
                         const result = await check.test();
                         const el = diagEl.querySelector(`[data-test="${check.name}"]`);
                         if (el) { el.textContent = result ? '✅ Pass' : '❌ Fail'; el.style.color = result ? '#10b981' : '#ef4444'; }
