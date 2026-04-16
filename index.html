@@ -2962,6 +2962,33 @@
         .confirm-actions { display: flex; gap: 10px; justify-content: center; }
         .dark-mode .confirm-title { color: #e2e8f0; }
         .dark-mode .confirm-dialog { background: #1e293b; }
+
+        /* Modal Overlay for Super Admin */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+            z-index: 1001; display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay .modal {
+            display: block !important; background: rgba(255,255,255,0.98); backdrop-filter: blur(20px);
+            border-radius: 20px; padding: 30px; max-width: 800px; width: 100%; max-height: 90vh;
+            overflow-y: auto; position: relative; border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal-overlay .modal .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border);
+        }
+        .modal-overlay .modal .modal-title { font-size: 24px; font-weight: bold; color: var(--text); }
+        .modal-overlay .modal .modal-body { padding: 0; }
+        .modal-close {
+            background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-light);
+            padding: 5px; border-radius: 50%; width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;
+        }
+        .modal-close:hover { background: var(--danger); color: white; }
+        .dark-mode .modal-overlay .modal { background: rgba(30,41,59,0.98); }
+
         /* Undo Toast */
         .undo-toast {
             position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
@@ -3492,6 +3519,10 @@
             <div class="nav-item" data-page="settings" data-roles="admin">
                 <div class="nav-icon">⚙️</div>
                 <span data-translate="settings">Settings</span>
+            </div>
+            <div class="nav-item" data-page="superAdmin" data-roles="super_admin" style="display:none;">
+                <div class="nav-icon">🛡️</div>
+                <span data-translate="super_admin">Super Admin</span>
             </div>
             
             <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
@@ -4226,6 +4257,125 @@
                                 </div>
                             </div>
                             <button class="btn btn-primary" onclick="performBulkExport()">📦 <span data-translate="bulk_export">Bulk Export</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Super Admin Page -->
+            <div id="superAdminPage" class="page hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">🛡️ <span data-translate="super_admin_panel">Super Admin Panel</span></h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-primary" onclick="showAddSchoolModal()">➕ <span data-translate="add_school">Add School</span></button>
+                            <button class="btn btn-secondary" onclick="loadSchools()">🔄 <span data-translate="refresh">Refresh</span></button>
+                        </div>
+                    </div>
+                    <div class="tabs" style="margin-bottom:20px;">
+                        <button class="tab active" onclick="showSuperAdminTab('schools')" data-translate="schools">Schools</button>
+                        <button class="tab" onclick="showSuperAdminTab('systemOverview')" data-translate="system_overview">System Overview</button>
+                        <button class="tab" onclick="showSuperAdminTab('userManagement')" data-translate="user_management">User Management</button>
+                    </div>
+
+                    <!-- Schools Tab -->
+                    <div id="saSchoolsTab" class="tab-content">
+                        <div class="stats-grid" style="margin-bottom:20px;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                                <div class="stat-info"><h3 id="saTotalSchools">0</h3><p data-translate="total_schools">Total Schools</p></div>
+                                <div class="stat-icon">🏫</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                                <div class="stat-info"><h3 id="saActiveSchools">0</h3><p data-translate="active_schools">Active Schools</p></div>
+                                <div class="stat-icon">✅</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                                <div class="stat-info"><h3 id="saTotalStudents">0</h3><p data-translate="total_students">Total Students</p></div>
+                                <div class="stat-icon">👥</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <div class="stat-info"><h3 id="saTotalUsers">0</h3><p data-translate="total_users">Total Users</p></div>
+                                <div class="stat-icon">👤</div>
+                            </div>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th data-translate="school_name">School Name</th>
+                                        <th data-translate="address">Address</th>
+                                        <th data-translate="phone">Phone</th>
+                                        <th data-translate="email">Email</th>
+                                        <th data-translate="status">Status</th>
+                                        <th data-translate="actions">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schoolsTableBody">
+                                    <tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:40px;" data-translate="no_schools_found">No schools found. Click "Add School" to create one.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- System Overview Tab -->
+                    <div id="saSystemOverviewTab" class="tab-content" style="display:none;">
+                        <div class="stats-grid" style="margin-bottom:20px;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                                <div class="stat-info"><h3 id="sysApiStatus">Checking...</h3><p>API Status</p></div>
+                                <div class="stat-icon">🔗</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                                <div class="stat-info"><h3 id="sysDbRecords">0</h3><p>Database Records</p></div>
+                                <div class="stat-icon">💾</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                                <div class="stat-info"><h3 id="sysStorageUsed">0 KB</h3><p>Storage Used</p></div>
+                                <div class="stat-icon">📦</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <div class="stat-info"><h3 id="sysLastBackup">Never</h3><p>Last Backup</p></div>
+                                <div class="stat-icon">🔄</div>
+                            </div>
+                        </div>
+                        <div class="card" style="margin-bottom:20px;">
+                            <div class="card-header"><h2 class="card-title">📊 System Activity Log</h2></div>
+                            <div id="systemActivityLog" style="max-height:400px;overflow-y:auto;padding:10px;">
+                                <p style="text-align:center;color:var(--text-light);padding:20px;">No activity logged yet.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Management Tab -->
+                    <div id="saUserManagementTab" class="tab-content" style="display:none;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <input type="text" id="saUserSearch" class="form-input" placeholder="Search users..." oninput="filterSuperAdminUsers()" style="max-width:300px;">
+                                <select id="saRoleFilter" class="form-input" onchange="filterSuperAdminUsers()" style="max-width:180px;">
+                                    <option value="">All Roles</option>
+                                    <option value="super_admin">Super Admin</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="teacher">Teacher</option>
+                                    <option value="employee">Employee</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="showAddUserModalSA()">➕ Add User</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Full Name</th>
+                                        <th>Role</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="saUsersTableBody">
+                                    <tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:40px;">Loading users...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -6157,20 +6307,19 @@
         }
 
         // Authentication Functions
-        function handleLogin(event) {
+        async function handleLogin(event) {
             event.preventDefault();
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
             
             showLoginSpinner(true);
             
-            setTimeout(() => {
-                if (login(username, password)) {
-                    showLoginSpinner(false);
-                } else {
-                    showLoginSpinner(false);
-                }
-            }, 1000);
+            try {
+                await login(username, password);
+            } catch (e) {
+                console.error('Login error:', e);
+            }
+            showLoginSpinner(false);
         }
 
         function showLoginSpinner(show) {
@@ -6186,19 +6335,43 @@
             }
         }
 
-        function login(username, password) {
+        async function login(username, password) {
             // Try API login first
-            apiPost('/auth/login', { username, password }).then(result => {
+            try {
+                const result = await apiPost('/auth/login', { username, password });
                 if (result && result.success) {
                     apiToken = result.token;
                     currentUser = result.user;
+                    // Grant super_admin to default admin
+                    if (username === 'admin') {
+                        currentUser.role = 'super_admin';
+                    }
                     const auth = {
                         userId: result.user.id,
-                        userRole: result.user.role,
+                        userRole: currentUser.role,
                         token: result.token,
                         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
                     };
                     saveToStorage(STORAGE_KEYS.AUTH, auth);
+                    
+                    // Update user role in local storage
+                    let users = loadFromStorage(STORAGE_KEYS.USERS) || [];
+                    const userIdx = users.findIndex(u => u.id === result.user.id);
+                    if (userIdx >= 0) {
+                        users[userIdx].role = currentUser.role;
+                    } else {
+                        users.push({
+                            id: result.user.id,
+                            username: result.user.username,
+                            password: '',
+                            role: currentUser.role,
+                            fullName: result.user.full_name || result.user.username,
+                            email: result.user.email || '',
+                            phone: result.user.phone || '',
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                    saveToStorage(STORAGE_KEYS.USERS, users);
                     
                     showMainApp();
                     updateCurrentUserDisplay();
@@ -6209,14 +6382,13 @@
                     loadFromDatabase().then(() => {
                         loadDashboard();
                     });
-                } else {
-                    // Fallback to local login
-                    localLogin(username, password);
+                    return true;
                 }
-            }).catch(() => {
-                // Fallback to local login if API is down
-                localLogin(username, password);
-            });
+            } catch (e) {
+                console.warn('API login failed, trying local:', e);
+            }
+            // Fallback to local login
+            return localLogin(username, password);
         }
 
         function localLogin(username, password) {
@@ -6227,6 +6399,11 @@
             const user = users.find(u => u.username === username && u.password === password);
             
             if (user) {
+                // Grant super_admin to default admin user
+                if (username === 'admin' && user.role === 'admin') {
+                    user.role = 'super_admin';
+                    saveToStorage(STORAGE_KEYS.USERS, users);
+                }
                 currentUser = user;
                 const auth = {
                     userId: user.id,
@@ -6240,8 +6417,10 @@
                 applyRoleBasedNavigation();
                 showToast(translate('login_successful') || 'Login successful!');
                 loadDashboard();
+                return true;
             } else {
                 showToast(translate('invalid_credentials') || 'Invalid username or password', 'error');
+                return false;
             }
         }
 
@@ -6305,7 +6484,10 @@
             const role = currentUser ? currentUser.role : 'admin';
             document.querySelectorAll('.nav-item[data-page]').forEach(item => {
                 const allowedRoles = item.dataset.roles ? item.dataset.roles.split(',') : ['admin'];
-                if (allowedRoles.includes(role)) {
+                // super_admin should see everything admin sees plus super_admin items
+                const effectiveRoles = role === 'super_admin' ? ['admin', 'super_admin', 'teacher', 'employee'] : [role];
+                const hasAccess = allowedRoles.some(r => effectiveRoles.includes(r));
+                if (hasAccess) {
                     item.style.display = 'flex';
                 } else {
                     item.style.display = 'none';
@@ -7191,7 +7373,8 @@
                 incidents: { icon: '📝', key: 'incident_log' },
                 messaging: { icon: '💬', key: 'whatsapp_messaging' },
                 reports: { icon: '📈', key: 'reports_analytics' },
-                settings: { icon: '⚙️', key: 'settings' }
+                settings: { icon: '⚙️', key: 'settings' },
+                superAdmin: { icon: '🛡️', key: 'super_admin_panel' }
             };
             
             const titleInfo = titles[pageName];
@@ -7217,6 +7400,7 @@
                 case 'messaging': loadMessaging(); break;
                 case 'reports': loadReports(); break;
                 case 'settings': loadSettings(); break;
+                case 'superAdmin': loadSuperAdmin(); break;
             }
         }
 
@@ -10924,6 +11108,542 @@
                 showToast('Admin user deleted successfully');
                 loadAdminUsers();
             }
+        }
+
+        // ==================== SUPER ADMIN FUNCTIONS ====================
+        let saSchools = [];
+        let saUsers = [];
+        let saCurrentSchoolId = null;
+
+        function showSuperAdminTab(tabName) {
+            const tabMap = { schools: 'saSchoolsTab', systemOverview: 'saSystemOverviewTab', userManagement: 'saUserManagementTab' };
+            Object.values(tabMap).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            const activeTab = document.getElementById(tabMap[tabName]);
+            if (activeTab) activeTab.style.display = 'block';
+            // Update tab buttons
+            const tabs = document.querySelectorAll('#superAdminPage .tabs .tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            const tabNames = ['schools', 'systemOverview', 'userManagement'];
+            const idx = tabNames.indexOf(tabName);
+            if (idx >= 0 && tabs[idx]) tabs[idx].classList.add('active');
+        }
+
+        async function loadSuperAdmin() {
+            await loadSchools();
+            await loadSuperAdminUsers();
+            loadSystemOverview();
+        }
+
+        async function loadSchools() {
+            // Try API first, fallback to localStorage
+            let schools = [];
+            try {
+                const result = await apiGet('/schools');
+                if (result && result.success && result.data) {
+                    schools = result.data;
+                }
+            } catch (e) {
+                console.warn('API schools failed, using local:', e);
+            }
+            // Fallback to localStorage
+            if (schools.length === 0) {
+                schools = loadFromStorage('attendance_schools') || [];
+            }
+            saSchools = schools;
+            saveToStorage('attendance_schools', schools);
+            renderSchoolsTable();
+            updateSchoolStats();
+        }
+
+        function updateSchoolStats() {
+            const total = saSchools.length;
+            const active = saSchools.filter(s => s.is_active === 1 || s.is_active === true).length;
+            document.getElementById('saTotalSchools').textContent = total;
+            document.getElementById('saActiveSchools').textContent = active;
+            // Get total students/users from local storage
+            const students = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
+            const users = loadFromStorage(STORAGE_KEYS.USERS) || [];
+            document.getElementById('saTotalStudents').textContent = students.length;
+            document.getElementById('saTotalUsers').textContent = users.length;
+        }
+
+        function renderSchoolsTable() {
+            const tbody = document.getElementById('schoolsTableBody');
+            if (!saSchools || saSchools.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:40px;">No schools found. Click "Add School" to create one.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = saSchools.map(school => `
+                <tr>
+                    <td><strong>${escapeHtml(school.name || '')}</strong></td>
+                    <td>${escapeHtml(school.address || '-')}</td>
+                    <td>${escapeHtml(school.phone || '-')}</td>
+                    <td>${escapeHtml(school.email || '-')}</td>
+                    <td><span class="badge badge-${school.is_active === 1 || school.is_active === true ? 'success' : 'danger'}">${school.is_active === 1 || school.is_active === true ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-info" onclick="switchSchool('${school.id}')" title="Switch to this school">🔄 Switch</button>
+                            <button class="btn btn-sm btn-warning" onclick="showEditSchoolModal('${school.id}')" title="Edit school">✏️ Edit</button>
+                            <button class="btn btn-sm btn-${school.is_active === 1 || school.is_active === true ? 'secondary' : 'success'}" onclick="toggleSchoolStatus('${school.id}')" title="Toggle status">${school.is_active === 1 || school.is_active === true ? '⏸️ Deactivate' : '▶️ Activate'}</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteSchool('${school.id}')" title="Delete school">🗑️ Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function showAddSchoolModal() {
+            editingId = null;
+            const modalHtml = `
+                <div class="modal-overlay active" id="schoolModal" onclick="if(event.target===this)closeSchoolModal()">
+                    <div class="modal" style="max-width:550px;">
+                        <div class="modal-header">
+                            <h2 class="modal-title">🏫 Add New School</h2>
+                            <button class="modal-close" onclick="closeSchoolModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="schoolForm" onsubmit="saveSchool(event)">
+                                <div class="form-group">
+                                    <label class="form-label">School Name *</label>
+                                    <input type="text" id="schoolNameInput" class="form-input" required placeholder="Enter school name">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Address</label>
+                                    <textarea id="schoolAddressInput" class="form-textarea" placeholder="Enter school address"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" id="schoolPhoneInput" class="form-input" placeholder="Enter phone number">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" id="schoolEmailInput" class="form-input" placeholder="Enter email">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Admin Username</label>
+                                    <input type="text" id="schoolAdminUserInput" class="form-input" placeholder="Admin username for this school">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Admin Password</label>
+                                    <input type="password" id="schoolAdminPassInput" class="form-input" placeholder="Admin password for this school">
+                                </div>
+                                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+                                    <button type="button" class="btn btn-secondary" onclick="closeSchoolModal()">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">💾 Save School</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const existing = document.getElementById('schoolModal');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        function showEditSchoolModal(schoolId) {
+            const school = saSchools.find(s => s.id === schoolId);
+            if (!school) { showToast('School not found', 'error'); return; }
+            editingId = schoolId;
+            showAddSchoolModal();
+            // Populate form
+            setTimeout(() => {
+                document.getElementById('schoolNameInput').value = school.name || '';
+                document.getElementById('schoolAddressInput').value = school.address || '';
+                document.getElementById('schoolPhoneInput').value = school.phone || '';
+                document.getElementById('schoolEmailInput').value = school.email || '';
+                document.getElementById('schoolAdminUserInput').value = school.admin_username || '';
+                document.getElementById('schoolAdminPassInput').value = school.admin_password || '';
+                document.querySelector('#schoolModal .modal-title').textContent = '✏️ Edit School';
+            }, 50);
+        }
+
+        function closeSchoolModal() {
+            const modal = document.getElementById('schoolModal');
+            if (modal) modal.remove();
+            editingId = null;
+        }
+
+        async function saveSchool(event) {
+            event.preventDefault();
+            const schoolData = {
+                name: document.getElementById('schoolNameInput').value.trim(),
+                address: document.getElementById('schoolAddressInput').value.trim(),
+                phone: document.getElementById('schoolPhoneInput').value.trim(),
+                email: document.getElementById('schoolEmailInput').value.trim(),
+                admin_username: document.getElementById('schoolAdminUserInput').value.trim(),
+                admin_password: document.getElementById('schoolAdminPassInput').value.trim(),
+                is_active: 1
+            };
+            if (!schoolData.name) { showToast('School name is required', 'error'); return; }
+
+            if (editingId) {
+                // Update existing school
+                try {
+                    await apiPut('/schools/' + editingId, schoolData);
+                } catch (e) {
+                    console.warn('API update failed, updating locally:', e);
+                }
+                const idx = saSchools.findIndex(s => s.id === editingId);
+                if (idx >= 0) {
+                    saSchools[idx] = { ...saSchools[idx], ...schoolData };
+                }
+                showToast('School updated successfully!');
+            } else {
+                // Create new school
+                schoolData.id = generateId();
+                schoolData.created_at = new Date().toISOString();
+                try {
+                    const result = await apiPost('/schools', schoolData);
+                    if (result && result.success && result.data && result.data.id) {
+                        schoolData.id = result.data.id;
+                    }
+                } catch (e) {
+                    console.warn('API create failed, saving locally:', e);
+                }
+                saSchools.push(schoolData);
+                showToast('School created successfully!');
+            }
+            saveToStorage('attendance_schools', saSchools);
+            renderSchoolsTable();
+            updateSchoolStats();
+            closeSchoolModal();
+        }
+
+        async function deleteSchool(schoolId) {
+            const school = saSchools.find(s => s.id === schoolId);
+            if (!school) return;
+            showConfirm({
+                title: 'Delete School',
+                message: `Are you sure you want to delete "${school.name}"? This action cannot be undone.`,
+                icon: '🗑️',
+                okText: 'Delete',
+                okClass: 'btn-danger'
+            }).then(async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        await apiDelete('/schools/' + schoolId);
+                    } catch (e) {
+                        console.warn('API delete failed, deleting locally:', e);
+                    }
+                    saSchools = saSchools.filter(s => s.id !== schoolId);
+                    saveToStorage('attendance_schools', saSchools);
+                    renderSchoolsTable();
+                    updateSchoolStats();
+                    showToast('School deleted successfully!');
+                }
+            });
+        }
+
+        async function switchSchool(schoolId) {
+            const school = saSchools.find(s => s.id === schoolId);
+            if (!school) { showToast('School not found', 'error'); return; }
+            if (school.is_active !== 1 && school.is_active !== true) {
+                showToast('Cannot switch to an inactive school', 'warning');
+                return;
+            }
+            saCurrentSchoolId = schoolId;
+            // Apply school info
+            const schoolInfo = {
+                name: school.name,
+                address: school.address,
+                phone: school.phone,
+                email: school.email,
+                logo: school.logo || ''
+            };
+            saveToStorage(STORAGE_KEYS.SCHOOL_INFO, schoolInfo);
+            // Update display
+            document.getElementById('schoolNameDisplay').textContent = school.name;
+            document.title = school.name + ' - Attendance System';
+            if (school.logo) {
+                const logoDisplay = document.getElementById('schoolLogoDisplay');
+                logoDisplay.src = school.logo;
+                logoDisplay.classList.remove('hidden');
+                const defaultLogo = document.getElementById('defaultLogo');
+                if (defaultLogo) defaultLogo.classList.add('hidden');
+            }
+            // Try API switch
+            try {
+                await apiPost('/schools/' + schoolId + '/switch', {});
+            } catch (e) {
+                console.warn('API switch failed:', e);
+            }
+            showToast(`Switched to ${school.name}`);
+        }
+
+        async function toggleSchoolStatus(schoolId) {
+            const idx = saSchools.findIndex(s => s.id === schoolId);
+            if (idx < 0) return;
+            const newStatus = saSchools[idx].is_active === 1 || saSchools[idx].is_active === true ? 0 : 1;
+            try {
+                await apiPut('/schools/' + schoolId, { is_active: newStatus });
+            } catch (e) {
+                console.warn('API toggle failed, updating locally:', e);
+            }
+            saSchools[idx].is_active = newStatus;
+            saveToStorage('attendance_schools', saSchools);
+            renderSchoolsTable();
+            updateSchoolStats();
+            showToast(`School ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+        }
+
+        async function loadSuperAdminUsers() {
+            let users = [];
+            try {
+                const result = await apiGet('/users');
+                if (result && result.success && result.data) {
+                    users = result.data;
+                }
+            } catch (e) {
+                console.warn('API users failed, using local:', e);
+            }
+            if (users.length === 0) {
+                users = loadFromStorage(STORAGE_KEYS.USERS) || [];
+            }
+            saUsers = users;
+            renderSuperAdminUsers();
+        }
+
+        function renderSuperAdminUsers(filteredUsers) {
+            const usersToRender = filteredUsers || saUsers;
+            const tbody = document.getElementById('saUsersTableBody');
+            if (!usersToRender || usersToRender.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:40px;">No users found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = usersToRender.map(user => {
+                const roleBadge = { super_admin: 'danger', admin: 'primary', teacher: 'info', employee: 'secondary' };
+                return `
+                <tr>
+                    <td><strong>${escapeHtml(user.username || '')}</strong></td>
+                    <td>${escapeHtml(user.full_name || user.fullName || '-')}</td>
+                    <td><span class="badge badge-${roleBadge[user.role] || 'secondary'}">${user.role || 'unknown'}</span></td>
+                    <td>${escapeHtml(user.email || '-')}</td>
+                    <td><span class="badge badge-${user.is_active === 1 || user.is_active === true ? 'success' : 'danger'}">${user.is_active === 1 || user.is_active === true ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <button class="btn btn-sm btn-warning" onclick="showEditUserModalSA('${user.id}')" title="Edit user">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUserSA('${user.id}')" title="Delete user">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function filterSuperAdminUsers() {
+            const search = document.getElementById('saUserSearch').value.toLowerCase();
+            const roleFilter = document.getElementById('saRoleFilter').value;
+            const filtered = saUsers.filter(u => {
+                const matchesSearch = !search || 
+                    (u.username || '').toLowerCase().includes(search) || 
+                    (u.full_name || u.fullName || '').toLowerCase().includes(search) ||
+                    (u.email || '').toLowerCase().includes(search);
+                const matchesRole = !roleFilter || u.role === roleFilter;
+                return matchesSearch && matchesRole;
+            });
+            renderSuperAdminUsers(filtered);
+        }
+
+        function showAddUserModalSA() {
+            editingId = null;
+            const modalHtml = `
+                <div class="modal-overlay active" id="saUserModal" onclick="if(event.target===this)closeSAUserModal()">
+                    <div class="modal" style="max-width:500px;">
+                        <div class="modal-header">
+                            <h2 class="modal-title">👤 Add New User</h2>
+                            <button class="modal-close" onclick="closeSAUserModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="saUserForm" onsubmit="saveUserSA(event)">
+                                <div class="form-group">
+                                    <label class="form-label">Username *</label>
+                                    <input type="text" id="saUserUsername" class="form-input" required placeholder="Enter username">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" id="saUserFullName" class="form-input" placeholder="Enter full name">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Password *</label>
+                                    <input type="password" id="saUserPassword" class="form-input" required placeholder="Enter password">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Role *</label>
+                                    <select id="saUserRole" class="form-input" required>
+                                        <option value="admin">Admin</option>
+                                        <option value="teacher">Teacher</option>
+                                        <option value="employee">Employee</option>
+                                        <option value="super_admin">Super Admin</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" id="saUserEmail" class="form-input" placeholder="Enter email">
+                                </div>
+                                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+                                    <button type="button" class="btn btn-secondary" onclick="closeSAUserModal()">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">💾 Save User</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const existing = document.getElementById('saUserModal');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        function showEditUserModalSA(userId) {
+            const user = saUsers.find(u => u.id === userId);
+            if (!user) { showToast('User not found', 'error'); return; }
+            editingId = userId;
+            showAddUserModalSA();
+            setTimeout(() => {
+                document.getElementById('saUserUsername').value = user.username || '';
+                document.getElementById('saUserFullName').value = user.full_name || user.fullName || '';
+                document.getElementById('saUserPassword').value = '';
+                document.getElementById('saUserPassword').removeAttribute('required');
+                document.getElementById('saUserRole').value = user.role || 'employee';
+                document.getElementById('saUserEmail').value = user.email || '';
+                document.querySelector('#saUserModal .modal-title').textContent = '✏️ Edit User';
+            }, 50);
+        }
+
+        function closeSAUserModal() {
+            const modal = document.getElementById('saUserModal');
+            if (modal) modal.remove();
+            editingId = null;
+        }
+
+        async function saveUserSA(event) {
+            event.preventDefault();
+            const userData = {
+                username: document.getElementById('saUserUsername').value.trim(),
+                full_name: document.getElementById('saUserFullName').value.trim(),
+                role: document.getElementById('saUserRole').value,
+                email: document.getElementById('saUserEmail').value.trim()
+            };
+            const password = document.getElementById('saUserPassword').value;
+            if (password) userData.password = password;
+
+            if (!userData.username) { showToast('Username is required', 'error'); return; }
+
+            if (editingId) {
+                try {
+                    await apiPut('/users/' + editingId, userData);
+                } catch (e) {
+                    console.warn('API update user failed, updating locally:', e);
+                }
+                const idx = saUsers.findIndex(u => u.id === editingId);
+                if (idx >= 0) {
+                    saUsers[idx] = { ...saUsers[idx], ...userData };
+                }
+                // Also update local storage
+                let localUsers = loadFromStorage(STORAGE_KEYS.USERS) || [];
+                const localIdx = localUsers.findIndex(u => u.id === editingId);
+                if (localIdx >= 0) {
+                    localUsers[localIdx] = { ...localUsers[localIdx], fullName: userData.full_name, role: userData.role, email: userData.email };
+                    if (password) localUsers[localIdx].password = password;
+                    saveToStorage(STORAGE_KEYS.USERS, localUsers);
+                }
+                showToast('User updated successfully!');
+            } else {
+                if (!password) { showToast('Password is required for new users', 'error'); return; }
+                userData.password = password;
+                userData.id = generateId();
+                try {
+                    const result = await apiPost('/users', userData);
+                    if (result && result.success && result.data && result.data.id) {
+                        userData.id = result.data.id;
+                    }
+                } catch (e) {
+                    console.warn('API create user failed, saving locally:', e);
+                }
+                saUsers.push(userData);
+                // Also add to local storage
+                let localUsers = loadFromStorage(STORAGE_KEYS.USERS) || [];
+                localUsers.push({
+                    id: userData.id,
+                    username: userData.username,
+                    password: userData.password,
+                    role: userData.role,
+                    fullName: userData.full_name,
+                    email: userData.email || '',
+                    phone: '',
+                    createdAt: new Date().toISOString()
+                });
+                saveToStorage(STORAGE_KEYS.USERS, localUsers);
+                showToast('User created successfully!');
+            }
+            renderSuperAdminUsers();
+            closeSAUserModal();
+        }
+
+        async function deleteUserSA(userId) {
+            const user = saUsers.find(u => u.id === userId);
+            if (!user) return;
+            if (user.role === 'super_admin' && saUsers.filter(u => u.role === 'super_admin').length <= 1) {
+                showToast('Cannot delete the last super admin', 'error');
+                return;
+            }
+            showConfirm({
+                title: 'Delete User',
+                message: `Are you sure you want to delete user "${user.username}"?`,
+                icon: '🗑️',
+                okText: 'Delete',
+                okClass: 'btn-danger'
+            }).then(async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        await apiDelete('/users/' + userId);
+                    } catch (e) {
+                        console.warn('API delete user failed, deleting locally:', e);
+                    }
+                    saUsers = saUsers.filter(u => u.id !== userId);
+                    let localUsers = loadFromStorage(STORAGE_KEYS.USERS) || [];
+                    localUsers = localUsers.filter(u => u.id !== userId);
+                    saveToStorage(STORAGE_KEYS.USERS, localUsers);
+                    renderSuperAdminUsers();
+                    showToast('User deleted successfully!');
+                }
+            });
+        }
+
+        async function loadSystemOverview() {
+            // Check API status
+            try {
+                const result = await apiGet('/health');
+                document.getElementById('sysApiStatus').textContent = result && result.status === 'ok' ? 'Online' : 'Offline';
+            } catch (e) {
+                document.getElementById('sysApiStatus').textContent = 'Offline';
+            }
+            // Calculate storage
+            let totalSize = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    totalSize += localStorage[key].length * 2; // UTF-16
+                }
+            }
+            document.getElementById('sysStorageUsed').textContent = (totalSize / 1024).toFixed(1) + ' KB';
+            // Count records
+            const students = loadFromStorage(STORAGE_KEYS.STUDENTS) || [];
+            const classes = loadFromStorage(STORAGE_KEYS.CLASSES) || [];
+            const attendance = loadFromStorage(STORAGE_KEYS.ATTENDANCE) || [];
+            const totalRecords = students.length + classes.length + attendance.length + saSchools.length + saUsers.length;
+            document.getElementById('sysDbRecords').textContent = totalRecords;
+            // Last backup
+            const backupSettings = loadFromStorage(STORAGE_KEYS.BACKUP_SETTINGS) || {};
+            document.getElementById('sysLastBackup').textContent = backupSettings.lastBackup ? new Date(backupSettings.lastBackup).toLocaleDateString() : 'Never';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
         // Helper Functions
