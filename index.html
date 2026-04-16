@@ -491,7 +491,8 @@
             padding: 20px;
         }
 
-        .modal.active {
+        .modal.active,
+        .modal:not(.hidden) {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -8733,6 +8734,7 @@
                     modal.classList.add('hidden');
                 } else if (modal.classList.contains('active')) {
                     modal.classList.remove('active');
+                    modal.classList.add('hidden');
                 } else {
                     // For dynamically created modals without active/hidden, remove them entirely
                     modal.remove();
